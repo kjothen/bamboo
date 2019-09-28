@@ -1,0 +1,14 @@
+{:paths ["src/main/clojure"]
+ :deps {
+        proto-repl/proto-repl {:mvn/version "0.3.1"}
+        org.clojure/data.csv {:mvn/version "0.1.4"}
+        net.mikera/core.matrix {:mvn/version "0.62.0"}
+        net.mikera/vectorz-clj {:mvn/version "0.48.0"}
+        clojure.java-time {:mvn/version "0.3.2"}
+        com.taoensso/timbre {:mvn/version "4.10.0"}
+        }
+ :aliases {
+  :test {:extra-paths ["src/test/clojure"]}
+  :check {:extra-deps {org.clojure/test.check {:mvn/version "0.9.0"}}}
+  }
+ }

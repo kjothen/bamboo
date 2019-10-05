@@ -1,4 +1,6 @@
 .DS_Store
 .cpcache/
 *.csv
+!example.csv
 *.clx
+.nrepl-port

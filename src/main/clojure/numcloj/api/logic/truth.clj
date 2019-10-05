@@ -1,5 +1,5 @@
 (ns numcloj.api.logic.truth
-  (:require [numcloj.creation :refer [array]]
+  (:require [numcloj.array-creation :refer [asarray]]
             [numcloj.utility :refer [nan? not-nan?]]))
 
 ;;;; Logic functions
@@ -24,7 +24,7 @@
 (defn all
   "Test whether all array elements along a given axis evaluate to True"
   [a & {:keys [axis out keepdims]}] 
-  (_all (array a)))
+  (_all (asarray a)))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.any.html
 (defmulti _any :dtype)
@@ -44,4 +44,4 @@
 (defn any
   "Test whether any array element along a given axis evaluates to True"
   [a & {:keys [axis out keepdims]}] 
-  (_any (array a)))
+  (_any (asarray a)))

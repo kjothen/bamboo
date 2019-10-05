@@ -8,6 +8,7 @@
   (throw (ex-info (str "argmax not allowed for this dtype: " (:dtype a))
                   {:type :TypeError})))
 (defmethod argmax :dtype/number [a]
+  ;; TODO buffer impl
   (first (apply max-key second (map-indexed vector (:data a)))))
 
 (defmulti argmin
@@ -17,4 +18,5 @@
   (throw (ex-info (str "argmin not allowed for this dtype: " (:dtype a))
                   {:type :TypeError})))
 (defmethod argmin :dtype/number [a]
+  ;; TODO buffer impl
   (first (apply min-key second (map-indexed vector (:data a)))))

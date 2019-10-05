@@ -7,14 +7,17 @@
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.api.extensions.ExtensionArray.html#pandas.api.extensions.ExtensionArray
 
 (defn- asarray
-  "Convert the input to an array"
+  "Convert the input to an array using numcloj"
   [data & {:keys [dtype copy] :or {copy true}}]
   (let [a (np/array data :dtype dtype :copy copy)]
     (merge {:dtype :dtype/array
             :data a}
            (select-keys a [:nbytes :shape :ndim]))))
 
-(defn array? [a] (and (map? a) (= (:dtype a) :dtype/array)))
+(defn- array? 
+  "Return true if this is a bamboo array"
+  [a] 
+  (and (map? a) (= (:dtype a) :dtype/array)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.array.html
 (defn array 

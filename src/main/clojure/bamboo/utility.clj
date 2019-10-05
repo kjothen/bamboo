@@ -29,7 +29,6 @@
   [ks vs]
   (apply array-map (interleave ks vs)))
 
-(defn fempty 
-  "Like fnil, but for empty args"
-  [f x]
-  (fn [x'] (apply f (if (empty? x') x x'))))
+(defn to-vector [x] (if (coll? x) (vec x) (vector x)))
+
+(defn in? [x coll] (if (some #{x} coll) true false))

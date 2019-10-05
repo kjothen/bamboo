@@ -1,5 +1,5 @@
 (ns numcloj.api.logic.array-contents
-  (:require [numcloj.creation :refer [array]]
+  (:require [numcloj.array-creation :refer [asarray]]
             [numcloj.functional :refer [vectorize]]
             [numcloj.utility :refer [nan?]]))
 
@@ -12,4 +12,4 @@
   "Test element-wise for NaN and return result as a boolean array"
   [a & {:keys [out where]}]
   (let [vf (vectorize nan? :otypes [:dtype/bool])]
-    (vf (array a))))
+    (vf (asarray a))))

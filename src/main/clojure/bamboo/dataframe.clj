@@ -1,12 +1,16 @@
 (ns bamboo.dataframe
   (:refer-clojure :exclude [drop])
-  (:require [bamboo.utility :refer [array-zipmap]]
+  (:require [bamboo.utility :refer [array-zipmap in? to-vector]]
             [bamboo.array :as array]
-            [bamboo.index :as index]))
+            [bamboo.index :as index]
+            [lang.core :refer [ndarray-expr]]
+            [numcloj.core :as np]))
 
 (def ^:dynamic *head-rows* 5)
 
-;;;; https://pandas.pydata.org/pandas-docs/version/0.23/api.html#dataframe
+;;;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html
+
+(defn- shape [as] [(first (:shape (first as))) (count as)])
 
 ;;; Constructor
 
@@ -16,16 +20,19 @@
    structure with labeled axes (rows and columns). Arithmetic operations 
    align on both row and column labels. Can be thought of as a dict-like 
    container for Series objects. The primary bamboo data structure."           
-  [data & {:keys [index columns dtype copy!]
-           :or {copy! true}}]
-  (let [arrays (mapv #(array/array % :dtype dtype :copy copy!) data)
-        rowcount (first (:shape (first arrays)))
-        colcount (count arrays)]
+  [data & {:keys [index columns dtype copy]
+           :or {copy false}}]
+  (let [arrays (mapv #(array/array % :dtype dtype :copy copy) data)
+        shape (shape arrays)]
     {:dtype :dtype/dataframe
      :data arrays
-     :index (or index (index/rangeindex rowcount))
-     :columns (index/index columns)
-     :shape [rowcount colcount]}))
+     :index (if (some? index) 
+              (index/index index :copy copy)
+              (index/rangeindex (first shape)))
+     :columns (if (some? columns) 
+                (index/index columns :copy copy) 
+                (index/rangeindex (second shape)))
+     :shape shape}))
 
 ;;; Attributes and underlying data
 ;;; Conversion
@@ -44,17 +51,45 @@
 ;;; Function application, GroupBy & Window
 ;;; Computations / Descriptive Stats
 ;;; Reindexing / Selection / label manipulation
-(defn drop [df labels]
-  "Drop specified labels from rows or columns"
-  (let [cols (select-keys (:columns df) (set labels))
-        col-idxs (set (vals cols))
-        col-lbls (vec (keys cols))]
-    (dataframe (vec (keep-indexed
-                     #(when-not (contains? col-idxs %1) %2)
-                     (:data df)))
-               :index (:index df)
-               :columns (keys (apply dissoc (:columns df) col-lbls))
-               :copy! true)))
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.drop.html#pandas.DataFrame.drop
+(defn drop
+  "Drop specified labels (or columns and indices) from rows or columns"
+  {:arglists '([df labels? & {:keys [index columns axis level inplace errors]
+                              :or {axis 0 inplace false errors :raise}}])}
+  [df-and-labels & args]
+  ; more than one variadic overload - labels are optional
+  (let [[df labels {:keys [index columns axis level inplace errors]
+                    :or {axis 0 inplace false errors :raise}}]
+        (if (even? (count args))
+          [df-and-labels nil args]
+          [df-and-labels (first args) (rest args)])]
+    (when (every? nil? [labels columns index])
+      (throw (ex-info "Need to specify at least one of 'labels', 'index' or 'columns'"
+                      {:type :ValueError})))
+    (when (and (some? labels) (not-every? nil? [columns index]))
+      (throw (ex-info "Cannot specify both 'labels' and 'index'/'columns'"
+                      {:type :ValueError})))
+    ; (if (some? labels)
+    ;   (if (= 0 axis)
+    ;     (if (true? inplace)
+    ;       (index/drop index labels :errors errors)
+    ;       (index/drop index labels :errors errors))
+    ;     (index/drop column labels :errors errors))
+    
+    ;; TODO - finish this properly now that delete works in numcloj!!!
+    (case axis
+      0 (let [_labels (to-vector labels)
+              indices (np/flatnonzero (ndarray-expr (index/to-numpy (:columns df))
+                                                    #(in? % _labels)
+                                                    :dtype :dtype/bool))]
+          (dataframe (vec (keep-indexed
+                           #(when-not (in? %1 (:data indices)) %2)
+                           (:data df)))
+                     :index (:index df)
+                     :columns (reduce #(index/delete %1 %2) (:columns df) _labels)
+                     :copy true))
+      df)))
 
 ;;; Missing data handling
 ;;; Reshaping, sorting, transposing

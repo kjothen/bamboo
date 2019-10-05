@@ -16,6 +16,7 @@
 ;; Shape manipulation
 
 ;; Item selection and manipulation
+(def put item-manipulation/put)
 (def take item-manipulation/take)
 (def argsort item-manipulation/argsort)
 

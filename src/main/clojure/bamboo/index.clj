@@ -1,6 +1,9 @@
 (ns bamboo.index
   (:refer-clojure :rename {name clojure-name})
-  (:require [bamboo.array :as array]))
+  (:require [bamboo.array :as array]
+            [bamboo.dtype :as dtype]
+            [lang.core :refer [ndarray-expr]]
+            [numcloj.core :as np]))
 
 ;;;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.html#pandas.Index
 
@@ -9,19 +12,31 @@
 ;;; TODO: Float64Index, Int64Index, UInt64Index, IntervalIndex, 
 ;;; MultiIndex, PeriodIndex, TimedeltaIndex
 
+(defn- index? [a]
+  "Return true if this is any type of index"
+  (and (map? a) (isa? dtype/bamboo-hierarchy (:dtype a) :dtype/index)))
+
+(defn- copy-index [idx]
+  "Copy an index (if it has data)"
+  (if (some? (:data idx))
+    (assoc idx :data (array/array (:data idx) :copy true))
+    idx))
+
 ;;; Index
-(defn index 
+(defn index
   "Immutable ndarray implementing an ordered, sliceable set. 
    The basic object storing axis labels for all pandas objects"
   [data & {:keys [dtype copy name tupleize-cols]
            :or {copy false tupleizecols true}}]
-  (let [a (array/array data :dtype dtype :copy copy)]
-    (merge {:dtype :dtype/index
-            :data a
-            :name name}
-           (select-keys a [:shape :ndim
-                           :size :nbytes]))))
-
+  (if (index? data)
+    (if (true? copy) (copy-index data) data)
+    (let [a (array/array data :dtype dtype :copy copy)]
+      (merge {:dtype :dtype/index
+              :data a
+              :name name}
+             (select-keys a [:shape :ndim
+                             :size :nbytes])))))
+  
 ;;; DatetimeIndex
 (defn datetimeindex
   "Immutable ndarray of datetime64 data, represented internally as int64, 
@@ -29,10 +44,12 @@
    datetime and carry metadata such as frequency information."
   [data & {:keys [copy freq tz ambiguous name dayfirst yearfirst]
            :or {copy false ambiguous :raise dayfirst false yearfirst false}}]
-  {:dtype :dtype/datetimeindex
-   :data data
-   :freq freq
-   :tz tz})
+  (if (index? data)
+    (if (true? copy) (copy-index data) data)
+    {:dtype :dtype/datetimeindex
+     :data data
+     :freq freq
+     :tz tz}))
 
 ;;; RangeIndex
 (defn rangeindex
@@ -58,11 +75,26 @@
 (defmethod array :dtype/rangeindex [idx] 
   (array/array (range (:start idx) (:stop idx) (:step idx))))
 
+(defn to-numpy
+  "A NumCloj ndarray representing the values in this Series or Index"
+  [a]
+  (:data (array a)))
+
 (defmulti dtype
   "Return the dtype object of the underlying data"
   :dtype)
 (defmethod dtype :default [idx] (:dtype idx))
 (defmethod dtype :dtype/rangeindex [idx] :dtype/int64)
+
+(defmulti delete
+  "Make new Index with passed location (-s) deleted"
+  :dtype)
+(defmethod delete :default [idx loc] 
+  (let [a (to-numpy idx)
+        indices (np/flatnonzero 
+                 (ndarray-expr a #(= % loc) :dtype :dtype/bool))]
+    (index (np/delete a indices))))
+
 
 ; (defmulti hasnans
 ;   "Return if I have any nans; enables various perf speedups"

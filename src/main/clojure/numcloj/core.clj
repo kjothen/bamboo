@@ -1,10 +1,13 @@
 (ns numcloj.core
   (:refer-clojure :exclude [empty take])
-  (:require [numcloj.api.logic.array-contents :as logic.array-contents]
+  (:require [numcloj.api.array-manipulation :as array-manipulation]
+            [numcloj.api.counting :as counting]
+            [numcloj.api.logic.array-contents :as logic.array-contents]
             [numcloj.api.logic.comparison :as logic.comparison]
             [numcloj.api.logic.truth :as logic.truth]
             [numcloj.api.searching :as searching]
-            [numcloj.creation :as creation]
+            [numcloj.array-buffer :as b]
+            [numcloj.array-creation :as array-creation]
             [numcloj.functional :as functional]
             [numcloj.ndarray :as ndarray]))
 
@@ -14,21 +17,24 @@
 
 ;;; Array creation routines
 ;; Ones and zeros
-(def empty creation/empty)
-(def empty-like creation/empty-like)
-(def full creation/full)
-(def full-like creation/full-like)
-(def ones creation/ones)
-(def ones-like creation/ones-like)
-(def zeros creation/zeros)
-(def zeros-like creation/zeros-like)
+(def empty array-creation/empty)
+(def empty-like array-creation/empty-like)
+(def full array-creation/full)
+(def full-like array-creation/full-like)
+(def ones array-creation/ones)
+(def ones-like array-creation/ones-like)
+(def zeros array-creation/zeros)
+(def zeros-like array-creation/zeros-like)
 
 ;; From existing data
-(def asarray creation/asarray)
-(def array creation/array)
-(def copy creation/copy)
+(def asarray array-creation/asarray)
+(def array array-creation/array)
+(def copy array-creation/copy)
 
 ;;; Array manipulation routines
+(def copyto array-manipulation/copyto)
+(def delete array-manipulation/delete)
+
 ;;; Binary operations
 ;;; String operations
 ;;; C-Types Foreign Function Interface (numpy.ctypeslib)
@@ -44,8 +50,21 @@
 
 ;;; NumPy-specific help functions
 ;;; Indexing routines
+(defn flatnonzero 
+  "Return indices that are non-zero in the flattened version of a"
+  [a]  
+  (let [_a (asarray a)
+        n (counting/count-nonzero _a)
+        f (if (= :dtype/bool (:dtype _a))
+            #(true? %2)
+            #(not (zero? %2)))]
+    (asarray (b/keep-indexed-indices f _a (empty n :dtype :dtype/int64)))))
+
+(defn put [a indices values & {:keys [mode]}]
+  (ndarray/put (asarray a) indices :mode mode))
+
 (defn take [a indices & {:keys [axis out mode]}]  
-  (ndarray/take (array a) indices :axis axis :out out :mode mode))
+  (ndarray/take (asarray a) indices :axis axis :out out :mode mode))
   
 ;;; Input and output
 ;;; Linear algebra (numpy.linalg)
@@ -57,12 +76,10 @@
 ;; Array contents
 (def isnan logic.array-contents/isnan)
 
-;; Comparison
-(def array-equal logic.comparison/array-equal)
-
 ;; Array type testing
 ;; Logical operations
 ;; Comparison
+(def array-equal logic.comparison/array-equal)
 
 ;;; Masked array operations
 ;;; Mathematical functions
@@ -75,13 +92,14 @@
 ;;; Sorting, searching and counting
 ;; Sorting
 (defn argsort [a & {:keys [axis kind order] :or {axis -1}}]
-  (ndarray/argsort (array a) :axis axis :kind kind :order order))
+  (ndarray/argsort (asarray a) :axis axis :kind kind :order order))
 
 ;; Searching
 (def argmin searching/argmin)
 (def argmax searching/argmax)
 
 ;; Counting
+(def count-nonzero counting/count-nonzero)
 
 ;;; Statistics
 ;;; Test Support (numpy.testing)

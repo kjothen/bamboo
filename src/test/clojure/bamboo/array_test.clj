@@ -2,10 +2,9 @@
   (:refer-clojure :exclude [all any])
   (:require [clojure.test :refer :all]
             [numcloj.core :as np]
-            [bamboo.array :refer :all])
-  (:import [java.util Arrays]))
+            [bamboo.array :refer :all]))
 
-(deftest object-tests 
+(deftest object-array-tests 
   (let [data [nil Double/NaN "a" 1 true 42.7]
         arr (array data)]
     (is (= {:dtype :dtype/array :ndim 1 :shape [6 nil]}
@@ -19,5 +18,4 @@
                           (np/argmin (to-numpy arr))))
     (is (thrown? ClassCastException (np/argsort (to-numpy arr))))
     (is (np/array-equal [1 0 2 3] (np/argsort [9 7.5 ##NaN nil])))  
-    (is (true? (np/any (np/isnan (to-numpy arr)))))
-    ))
+    (is (true? (np/any (np/isnan (to-numpy arr)))))))

@@ -7,7 +7,7 @@
                            (derive :dtype/bool :dtype/numcloj)
                            (derive :dtype/int64 :dtype/numcloj)
                            (derive :dtype/float64 :dtype/numcloj)
-                           (derive :dtype/fobject :dtype/numcloj)))
+                           (derive :dtype/object :dtype/numcloj)))
 
 (defn- sum-vals
   "Sum the values of the associative structure `m`, optionally
@@ -25,7 +25,9 @@
   (reduce (fn [acc item]
             (condp = (type item)
               java.lang.Boolean (update acc :dtype/bool inc)
+              java.lang.Float (update acc :dtype/float64 inc)
               java.lang.Double (update acc :dtype/float64 inc)
+              java.lang.Integer (update acc :dtype/int64 inc)
               java.lang.Long (update acc :dtype/int64 inc)
               java.lang.String (update acc :dtype/object inc)
               clojure.lang.Keyword (update acc :keyword inc)

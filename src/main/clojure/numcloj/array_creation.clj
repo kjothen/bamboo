@@ -1,6 +1,6 @@
-(ns numcloj.creation
+(ns numcloj.array-creation
   (:refer-clojure :exclude [empty])
-  (:require [numcloj.buffer :as buffer]
+  (:require [numcloj.array-buffer :as b]
             [numcloj.array.conversion :as conversion]
             [numcloj.dtype :as dtype]))
 
@@ -13,7 +13,7 @@
 (defmethod shaper Number [shape] [(long shape) nil])
 
 ;;; ndarray
-(defn- _size [data] (buffer/bsize data))
+(defn- _size [data] (b/size data))
 (defn- _itemsize [data] (* 8 (_size data)))
 (defn- _ndim [data] 1)
 (defn- _nbytes [data] (* (_ndim data) (_itemsize data)))
@@ -23,7 +23,7 @@
 (defn- ndarray
   [shape dtype & {:keys [buffer offset strides order]}]
   (let [_shape (shaper shape)
-        data (or buffer (buffer/buffer dtype (first _shape)))]
+        data (or buffer (b/array dtype (first _shape)))]
     {:data data
      :dtype dtype
      :shape _shape
@@ -38,22 +38,47 @@
 (defn ndarray? [a]
   (and (map? a) (isa? dtype/numcloj-hierarchy (:dtype a) :dtype/numcloj)))
 
+(defn ndarray-expr? [a]
+  (and (map? a) (ndarray? (:array a)) ; (ifn? (:expr a))
+       ))
+
 ;;; From existing data
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.asarray.html#numpy.asarray
 (defn- asclojurearray [a]
   (let [dtype (dtype/infer-dtype a)]
-    (ndarray (count a) dtype :buffer (buffer/from-sequential dtype a))))
+    (ndarray (count a) dtype :buffer (b/from-sequential dtype a))))
 (defmulti asarray
   "Convert the input to an array"
   class)
-(defmethod asarray :default [a] a)
+(defmethod asarray :default [a] 
+  (cond
+    (ndarray-expr? a)
+    (let [size (:size (:array a))
+          dtype (:dtype a)]
+      (ndarray (shaper size)
+               dtype
+               :buffer (b/map-values (:expr a)
+                                     (:array a)
+                                     (asarray (b/array dtype size)))))
+    (ndarray? a) a
+    :else nil))
+
 (defmethod asarray (Class/forName "[Z") [a] (ndarray (alength a) :dtype/bool :buffer a))
-(defmethod asarray (Class/forName "[D") [a] (ndarray (alength a) :dtype/double :buffer a))
-(defmethod asarray (Class/forName "[J") [a] (ndarray (alength a) :dtype/long :buffer a))
+(defmethod asarray (Class/forName "[D") [a] (ndarray (alength a) :dtype/float64 :buffer a))
+(defmethod asarray (Class/forName "[J") [a] (ndarray (alength a) :dtype/int64 :buffer a))
+(defmethod asarray (Class/forName "[Ljava.lang.Object;") [a] (ndarray (alength a) :dtype/object :buffer a))
 (defmethod asarray clojure.lang.PersistentVector [a] (asclojurearray a))
 (defmethod asarray clojure.lang.PersistentList [a] (asclojurearray a))
+(defmethod asarray clojure.lang.PersistentHashSet [a] (asclojurearray a))
+(defmethod asarray clojure.lang.ArraySeq [a] (asclojurearray (vec a)))
 (defmethod asarray clojure.lang.LazySeq [a] (asclojurearray (vec a)))
+(defmethod asarray clojure.lang.LongRange [a] (asclojurearray (vec a)))
+(defmethod asarray clojure.lang.Repeat [a] (asclojurearray (vec a)))
+(defmethod asarray java.lang.Boolean [a] (asclojurearray (vector a)))
+(defmethod asarray java.lang.Double [a] (asclojurearray (vector a)))
+(defmethod asarray java.lang.Long [a] (asclojurearray (vector a)))
+(defmethod asarray java.lang.String [a] (asclojurearray (vector a)))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array
 (defn array
@@ -70,7 +95,7 @@
   "Return an array copy of the given object"
   [a & {:keys [order]
         :or {order \K}}]
-  (conversion/copy (array a) :order order))
+  (conversion/copy (asarray a) :order order))
 
 
 ;;; Ones and zeros
@@ -119,7 +144,7 @@
   "Return a new array of given shape and type, filled with ones"
   [shape & {:keys [dtype order] :or {dtype :dtype/float64 order \C}}]
   (full shape
-        1
+        (if (= dtype :dtype/bool) true 1)
         :dtype dtype
         :order order))
 
@@ -140,7 +165,7 @@
   "Return a new array of given shape and type, filled with zeros"
   [shape & {:keys [dtype order] :or {dtype :dtype/float64 order \C}}]
   (full shape
-        0
+        (if (= dtype :dtype/bool) false 0)
         :dtype dtype
         :order order))
 

@@ -1,13 +1,17 @@
+(load-file "src/main/clojure/lang/core.clj")
+
 (load-file "src/main/clojure/numcloj/utility.clj")
 (load-file "src/main/clojure/numcloj/dtype.clj")
-(load-file "src/main/clojure/numcloj/buffer.clj")
+(load-file "src/main/clojure/numcloj/array_buffer.clj")
 (load-file "src/main/clojure/numcloj/array/conversion.clj")
-(load-file "src/main/clojure/numcloj/creation.clj")
+(load-file "src/main/clojure/numcloj/array_creation.clj")
 (load-file "src/main/clojure/numcloj/functional.clj")
 
 (load-file "src/main/clojure/numcloj/array/item_manipulation.clj")
 (load-file "src/main/clojure/numcloj/ndarray.clj")
 
+(load-file "src/main/clojure/numcloj/api/array_manipulation.clj")
+(load-file "src/main/clojure/numcloj/api/counting.clj")
 (load-file "src/main/clojure/numcloj/api/logic/array_contents.clj")
 (load-file "src/main/clojure/numcloj/api/logic/comparison.clj")
 (load-file "src/main/clojure/numcloj/api/logic/truth.clj")
@@ -23,3 +27,4 @@
 (load-file "src/main/clojure/bamboo/csv.clj")
 (load-file "src/main/clojure/bamboo/core.clj")
 (load-file "src/main/clojure/bamboo/pprint.clj")
+

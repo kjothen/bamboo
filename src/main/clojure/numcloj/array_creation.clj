@@ -39,8 +39,7 @@
   (and (map? a) (isa? dtype/numcloj-hierarchy (:dtype a) :dtype/numcloj)))
 
 (defn ndarray-expr? [a]
-  (and (map? a) (ndarray? (:array a)) ; (ifn? (:expr a))
-       ))
+  (and (map? a) (ndarray? (:array a)) (ifn? (:expr a))))
 
 ;;; From existing data
 
@@ -62,19 +61,14 @@
                                      (:array a)
                                      (asarray (b/array dtype size)))))
     (ndarray? a) a
-    :else nil))
+    (sequential? a) (asclojurearray (vec a))
+    :else (throw (ex-info (str "Cannot create ndarray from: " (type a))
+                          {:type :ValueError}))))
 
 (defmethod asarray (Class/forName "[Z") [a] (ndarray (alength a) :dtype/bool :buffer a))
 (defmethod asarray (Class/forName "[D") [a] (ndarray (alength a) :dtype/float64 :buffer a))
 (defmethod asarray (Class/forName "[J") [a] (ndarray (alength a) :dtype/int64 :buffer a))
 (defmethod asarray (Class/forName "[Ljava.lang.Object;") [a] (ndarray (alength a) :dtype/object :buffer a))
-(defmethod asarray clojure.lang.PersistentVector [a] (asclojurearray a))
-(defmethod asarray clojure.lang.PersistentList [a] (asclojurearray a))
-(defmethod asarray clojure.lang.PersistentHashSet [a] (asclojurearray a))
-(defmethod asarray clojure.lang.ArraySeq [a] (asclojurearray (vec a)))
-(defmethod asarray clojure.lang.LazySeq [a] (asclojurearray (vec a)))
-(defmethod asarray clojure.lang.LongRange [a] (asclojurearray (vec a)))
-(defmethod asarray clojure.lang.Repeat [a] (asclojurearray (vec a)))
 (defmethod asarray java.lang.Boolean [a] (asclojurearray (vector a)))
 (defmethod asarray java.lang.Double [a] (asclojurearray (vector a)))
 (defmethod asarray java.lang.Long [a] (asclojurearray (vector a)))
@@ -125,9 +119,8 @@
   (let [a (empty shape
                  :dtype dtype
                  :order order)]
-    (do
-      (conversion/fill a fill-value)
-      a)))
+    (conversion/fill a fill-value)
+    a))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.full_like.html
 (defn full-like
@@ -181,8 +174,16 @@
                :subok subok
                :shape shape)))
 
-;; Creating record arrays (numpy.rec)
-;; Creating character arrays (numpy.rec)
-;; Numerical ranges
-;; Building matrices
-;; The Matrix class
+;;; Creating record arrays (numpy.rec)
+
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.core.records.array.html
+(defn recarray
+  "Construct an ndarray that allows field access using attributes"
+  [shape & {:keys [dtype formats names buf]}]
+  (assoc (ndarray shape :dtype/record)
+         :names names))
+
+;;; Creating character arrays (numpy.rec)
+;;; Numerical ranges
+;;; Building matrices
+;;; The Matrix class

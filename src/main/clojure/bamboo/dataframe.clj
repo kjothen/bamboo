@@ -1,16 +1,21 @@
 (ns bamboo.dataframe
-  (:refer-clojure :exclude [drop])
-  (:require [bamboo.utility :refer [array-zipmap in? to-vector]]
+  (:refer-clojure :exclude [drop nth transpose])
+  (:require [clojure.pprint :as pprint]
+            [bamboo.utility :refer [array-zipmap in? to-vector]]
             [bamboo.array :as array]
             [bamboo.index :as index]
             [lang.core :refer [ndarray-expr]]
-            [numcloj.core :as np]))
+            [numcloj.core :as np]
+            [numcloj.ndarray :as ndarray]))
 
 (def ^:dynamic *head-rows* 5)
 
-;;;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html
+;;;; https://pandas.pydata.org/pandas-docs/stable/reference/frame.html
 
-(defn- shape [as] [(first (:shape (first as))) (count as)])
+(defn- shape [as]
+  [(first (:shape (first as))) (count as)])
+
+(defn- index-positions [idx labels] (vals (select-keys (:loc idx) labels)))
 
 ;;; Constructor
 
@@ -22,10 +27,11 @@
    container for Series objects. The primary bamboo data structure."           
   [data & {:keys [index columns dtype copy]
            :or {copy false}}]
-  (let [arrays (mapv #(array/array % :dtype dtype :copy copy) data)
+  (let [arrays (mapv #(array/array % :dtype dtype :copy copy) 
+                     (if (ndarray/ndarray? data) (ndarray/tolist data) data))
         shape (shape arrays)]
     {:dtype :dtype/dataframe
-     :data arrays
+     :data (array/array arrays :dtype :dtype/object :copy false)
      :index (if (some? index) 
               (index/index index :copy copy)
               (index/rangeindex (first shape)))
@@ -38,9 +44,12 @@
 ;;; Conversion
 
 ;;; Indexing, iteration
+(defn- nth [a n] (ndarray/item (array/to-numpy a) n))
+  
 (defn iat
   "Access a single value for a row/column pair by integer position"
-  ([df index column] (array/take (nth (:data df) column) index)))
+  [df index column]
+  (nth (nth (:data df) column) index))
 
 (defn iloc
   "Purely integer-location based indexing for selection by position"
@@ -70,32 +79,68 @@
     (when (and (some? labels) (not-every? nil? [columns index]))
       (throw (ex-info "Cannot specify both 'labels' and 'index'/'columns'"
                       {:type :ValueError})))
-    ; (if (some? labels)
-    ;   (if (= 0 axis)
-    ;     (if (true? inplace)
-    ;       (index/drop index labels :errors errors)
-    ;       (index/drop index labels :errors errors))
-    ;     (index/drop column labels :errors errors))
-    
-    ;; TODO - finish this properly now that delete works in numcloj!!!
+        
     (case axis
       0 (let [_labels (to-vector labels)
-              indices (np/flatnonzero (ndarray-expr (index/to-numpy (:columns df))
-                                                    #(in? % _labels)
-                                                    :dtype :dtype/bool))]
-          (dataframe (vec (keep-indexed
-                           #(when-not (in? %1 (:data indices)) %2)
-                           (:data df)))
+              indices (mapv #(index/get-loc (:columns df) %) _labels)
+              data (np/delete (array/to-numpy (:data df)) indices)]
+          (dataframe data
                      :index (:index df)
-                     :columns (reduce #(index/delete %1 %2) (:columns df) _labels)
+                     :columns (index/drop (:columns df) _labels)
                      :copy true))
       df)))
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html#pandas.DataFrame.equals
+(defn equals
+  "Test whether two objects contain the same elements"
+  [df other]
+  (and (= (:shape df) (:shape other))
+       (index/equals (:columns df) (:columns other))
+       (index/equals (:index df) (:index df))
+       (reduce
+        #(and %1 (let [a (nth (:data df) %2)
+                       other-a (nth (:data other) %2)]
+                   (and (= (:shape a) (:shape other-a))
+                        (np/array-equal (array/to-numpy a)
+                                        (array/to-numpy other-a)))))
+        true
+        (range (second (:shape df))))))
+
 ;;; Missing data handling
 ;;; Reshaping, sorting, transposing
-(defn sort-values [by & {:keys [axis ascending inplace kind na-position]
-                         :or {axis 0 ascending true inplace false 
-                              sorting :quicksort na-position :last}}])
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.transpose.html#pandas.DataFrame.transpose
+(defn transpose 
+  "Transpose index and columns"
+  [df & {:keys [copy] :or {copy false}}]
+  (let [m (first (:shape df))
+        n (second (:shape df))
+        data (mapv (fn [i] (mapv (fn [j] (iat df i j)) (range n))) (range m))]
+    (dataframe data
+               :columns (:index df)
+               :index (:columns df)
+               :copy copy)))
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
+(defn sort-values 
+  "Sort by the values along either axis"
+  [df by & {:keys [axis ascending inplace kind na-position]
+            :or {axis 0 ascending true inplace false
+                 sorting :quicksort na-position :last}}]
+  (if (= 0 axis)
+    (let [_by (to-vector by)
+          positions (map #(index/get-loc (:columns df) %) _by)
+          columns (mapv #(nth (:data df) %) positions)
+          indices (if (= 1 (count columns))
+                    (array/argsort (first columns))
+                    (array/array (np/argsort (np/rec.fromarrays 
+                                              (map array/to-numpy columns) 
+                                              :names _by))))]
+            (dataframe (array/to-numpy (:data df))
+                       :columns (:columns df)
+                       :index (index/index (array/take (index/array (:index df)) 
+                                                       indices))
+                       :copy false))))
 
 ;;; Combining / joining / merging
 ;;; Time series-related

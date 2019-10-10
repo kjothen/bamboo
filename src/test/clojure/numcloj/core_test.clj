@@ -10,4 +10,3 @@
 
 (deftest flatnonzero-test
   (is (= 2 (:size (flatnonzero (asarray [1 0 0 3]))))))
-

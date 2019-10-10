@@ -6,6 +6,8 @@
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.html
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.api.extensions.ExtensionArray.html#pandas.api.extensions.ExtensionArray
 
+(declare to-numpy)
+
 (defn- asarray
   "Convert the input to an array using numcloj"
   [data & {:keys [dtype copy] :or {copy true}}]
@@ -28,26 +30,29 @@
       (array (np/array (:data data) :dtype dtype :copy true)) 
       data)
     (asarray data :dtype dtype :copy copy)))
-  
+
 ;;; Attributes
 (defn values [a] (:data a))
 
 ;;; Methods
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.argsort.html#pandas.arrays.PandasArray.argsort
-(defn argsort [a & {:keys [ascending kind]
-                    :or {ascending true}}]
-  "Return the indices that would sort this array"
-  (np/argsort (:data a) :axis 1 :kind kind))
+(defn argsort
+  "Return the indices that would sort this array" 
+  [a & {:keys [ascending kind]
+        :or {ascending true}}]
+  (asarray (np/argsort (:data a))))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.take.html
 (defn take
   "Take elements from an array"
   [a indices & {:keys [allow-fill fill-value]
                 :or {allow-fill false}}]
-  (if (sequential? indices)
-    (array (np/take (:data a) indices))
-    (ndarray/item (:data a) indices)))
+  (if (array? indices)
+    (array (np/take (to-numpy a) (to-numpy indices)))
+    (if (sequential? indices)
+      (array (np/take (to-numpy a) indices))
+      (array [(ndarray/item (to-numpy a) indices)]))))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.to_numpy.html
 (defn to-numpy

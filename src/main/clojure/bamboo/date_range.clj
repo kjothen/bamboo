@@ -29,8 +29,9 @@
        (catch Exception _
          (ZonedDateTime/parse dt))))
 
-(defn- parse-date [dt tz]
+(defn- parse-date
   "Parse a date string into a ZonedDateTime"
+  [dt tz]
   (try (ZonedDateTime/of (LocalDate/parse dt) 
                          (LocalTime/MIN) 
                          (ZoneId/of (or tz default-tz)))
@@ -142,7 +143,8 @@
                #{:end :freq :periods}    (backward end' freq periods)
                (throw (ex-info
                        (str "Of the four parameters start, end, periods,"
-                            " and freq, exactly three must be specified"))))]
+                            " and freq, exactly three must be specified")
+                       {:type :ValueError})))]
     ; return a datetimeindex
     (index/datetimeindex 
      (array/array (map as-datetime64ns data) :dtype :dtype/int64) 

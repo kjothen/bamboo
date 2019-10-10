@@ -17,6 +17,12 @@
   [a i]
   (b/get (:data a) i))
 
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.tolist.html#numpy.ndarray.tolist
+(defn tolist
+  "Return the array as an a.ndim-levels deep nested list of Clojure scalars"
+  [a]
+  (b/tolist (:data a)))
+
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.itemset.html#numpy.ndarray.itemset
 (defn itemset
   "Insert scalar into an array (scalar is cast to array’s dtype, if possible)"
@@ -27,7 +33,7 @@
 (defn copy
   "Return a copy of the array"
   [a & {:keys [order]}]
-  (assoc a :data (b/copy (:data a))))
+  (update-in a [:data] b/copy))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.fill.html#numpy.ndarray.fill
 (defn fill

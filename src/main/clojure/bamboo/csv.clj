@@ -7,15 +7,14 @@
             [bamboo.utility :refer [parse-long parse-double parse-bool]])
   (:refer-clojure :exclude [read-string]))
 
-(defn parse-string [s] (if (empty? s) nil s))
+(defn parse-string [s] (when-not (string/blank? s) s))
 
 (defn- read-string [s]
   (let [s' (string/trim s)]
     (or (parse-long s') (parse-double s') (parse-bool s') (parse-string s'))))
 
 (defn- read-rows [reader]
-  (->> (csv/read-csv reader)
-       (map #(map read-string %))))
+  (map #(map read-string %) (csv/read-csv reader)))
 
 (defn- col-names [rows header names]
   (cond

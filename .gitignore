@@ -4,3 +4,4 @@
 !example.csv
 *.clx
 .nrepl-port
+.eastwood

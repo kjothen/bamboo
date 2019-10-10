@@ -9,7 +9,8 @@
             [numcloj.array-buffer :as b]
             [numcloj.array-creation :as array-creation]
             [numcloj.functional :as functional]
-            [numcloj.ndarray :as ndarray]))
+            [numcloj.ndarray :as ndarray]
+            [numcloj.rec :as rec]))
 
 ;;;; TODO! For all functions that expect array-like, wrap these before sending to ndarray
 
@@ -30,6 +31,10 @@
 (def asarray array-creation/asarray)
 (def array array-creation/array)
 (def copy array-creation/copy)
+
+;; Creating record arrays (numpy.rec)
+(def recarray array-creation/recarray)
+(def rec.fromarrays rec/fromarrays)
 
 ;;; Array manipulation routines
 (def copyto array-manipulation/copyto)
@@ -92,7 +97,10 @@
 ;;; Sorting, searching and counting
 ;; Sorting
 (defn argsort [a & {:keys [axis kind order] :or {axis -1}}]
-  (ndarray/argsort (asarray a) :axis axis :kind kind :order order))
+  (let [_a (asarray a)]
+    (if (= :dtype/record (:dtype _a))
+      (rec/argsort _a :axis axis :kind kind :order order)
+      (ndarray/argsort _a :axis axis :kind kind :order order))))
 
 ;; Searching
 (def argmin searching/argmin)

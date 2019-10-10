@@ -17,5 +17,5 @@
     (is (thrown-with-msg? Exception #"^argmin not allowed for this dtype*" 
                           (np/argmin (to-numpy arr))))
     (is (thrown? ClassCastException (np/argsort (to-numpy arr))))
-    (is (np/array-equal [1 0 2 3] (np/argsort [9 7.5 ##NaN nil])))  
+    (is (np/array-equal [1 0 2 3] (np/argsort [9 7.5 Double/NaN nil])))  
     (is (true? (np/any (np/isnan (to-numpy arr)))))))

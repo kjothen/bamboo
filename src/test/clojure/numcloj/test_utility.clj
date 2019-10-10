@@ -35,7 +35,7 @@
 (defn random-sample [] (max 1 (rand-int num-samples)))
 
 (defn random-samples []
-  (distinct (take (random-sample) (repeatedly random-sample))))
+  (distinct (repeatedly (random-sample) random-sample)))
 
 (defn invert-samples [samples]
   (keep #(if-not (some #{%} samples) %) sample-range))

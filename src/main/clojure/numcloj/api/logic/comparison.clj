@@ -7,7 +7,9 @@
 ;;; Comparison
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.array_equal.html
-(defn array-equal [a1 a2]
+(defn array-equal 
+  "True if two arrays have the same shape and elements, false otherwise"
+  [a1 a2]
   (let [_a1 (asarray a1)
         _a2 (asarray a2)]
     (and (= (:dtype _a1) (:dtype _a2))

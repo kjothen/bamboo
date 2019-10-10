@@ -12,15 +12,23 @@ A pandas dataframe-like library. Includes numcloj, a numpy-like library.
 (def df (pd/read-csv "example.csv"))
 ```
 ```bash
-user=> (pp/pprint (dataframe/drop df "b"))
+user=> (pp/pprint df)
 
-| a |  c |   d |
-|---+----+-----|
-| 1 |  3 | NaN |
-| 5 |  7 | 8.0 |
-| 9 | 11 | NaN |
+|   | a |  b |  c |   d |
+|---+---+----+----+-----|
+| 0 | 1 |  2 |  3 | NaN |
+| 1 | 5 |  6 |  7 | 8.0 |
+| 2 | 9 | 10 | 11 | NaN |
+
+user=> (pp/pprint (dataframe/drop df ["b" "d"]))
+
+|   | a |  c |
+|---+---+----|
+| 0 | 1 |  3 |
+| 1 | 5 |  7 |
+| 2 | 9 | 11 |
 ```
 
 ## Testing
-`clj -A:test -d "src/test/clojure"`
+`clj -A:test`
 

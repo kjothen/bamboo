@@ -7,7 +7,8 @@
                            (derive :dtype/bool :dtype/numcloj)
                            (derive :dtype/int64 :dtype/numcloj)
                            (derive :dtype/float64 :dtype/numcloj)
-                           (derive :dtype/object :dtype/numcloj)))
+                           (derive :dtype/object :dtype/numcloj)
+                           (derive :dtype/record :dtype/numcloj)))
 
 (defn- sum-vals
   "Sum the values of the associative structure `m`, optionally
@@ -30,13 +31,14 @@
               java.lang.Integer (update acc :dtype/int64 inc)
               java.lang.Long (update acc :dtype/int64 inc)
               java.lang.String (update acc :dtype/object inc)
+              clojure.lang.PersistentArrayMap (update acc :dtype/object inc) ; for records
               clojure.lang.Keyword (update acc :keyword inc)
               nil (update acc :nil inc)
               (reduced (assoc acc :error (inc (sum-vals acc))))))
           {:dtype/bool 0 :dtype/float64 0 :dtype/int64 0
-           :dtype/object 0 :nil 0 :keyword 0} coll))
+           :dtype/object 0 :dtype/record 0 :nil 0 :keyword 0} coll))
 
-(defn- as-dtype
+(defn from-frequencies
   "Given a frequency map of `dtypes` for a collection, return the most
    appropriate `dtype` for the entire collection."
   [dtypes]
@@ -68,5 +70,5 @@
       :dtype/bool)
     :else :dtype/object))
 
-(defn infer-dtype [coll] (as-dtype (scan-dtypes coll)))
+(defn infer-dtype [coll] (from-frequencies (scan-dtypes coll)))
 

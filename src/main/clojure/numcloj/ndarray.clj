@@ -1,7 +1,8 @@
 (ns numcloj.ndarray
   (:refer-clojure :exclude [take])
   (:require [numcloj.array.conversion :as conversion]
-            [numcloj.array.item-manipulation :as item-manipulation]))
+            [numcloj.array.item-manipulation :as item-manipulation]
+            [numcloj.array-creation :as array-creation]))
 
 ;;;; https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
 
@@ -9,6 +10,7 @@
 
 ;; Array conversion
 (def item conversion/item)
+(def tolist conversion/tolist)
 (def itemset conversion/itemset)
 (def fill conversion/fill)
 (def copy conversion/copy)
@@ -24,3 +26,5 @@
 
 ;;; Arithmetic, matrix multiplication, and comparison operations
 ;;; Special methods
+
+(def ndarray? array-creation/ndarray?)

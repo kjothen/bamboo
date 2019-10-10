@@ -37,7 +37,7 @@
       (let [_where (asarray where)]
         (b/keep-indexed-values
          (fn [idx _] (= 1 (b/get (:data _where) idx))) _src dst))
-      (b/copy _src dst))))
+      (b/map-values identity _src dst))))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.delete.html#numpy.delete
 (defn delete
@@ -46,12 +46,12 @@
    not returned by arr [obj]"
   [a obj & [axis]]
   (let [_a (asarray a)
-          _obj (asarray obj)
-          mask (put (ones (:size _a) :dtype :dtype/int64)
-                    _obj
-                    (zeros (:size _a) :dtype :dtype/int64))
-          out (empty (count-nonzero mask) :dtype (:dtype _a))]
-      (copyto out _a :where mask)
-      out))
+        _obj (asarray obj)
+        mask (put (ones (:size _a) :dtype :dtype/int64)
+                  _obj
+                  (zeros (:size _a) :dtype :dtype/int64))
+        out (empty (count-nonzero mask) :dtype (:dtype _a))]
+    (copyto out _a :where mask)
+    out))
 
 ;;; Rearranging elements

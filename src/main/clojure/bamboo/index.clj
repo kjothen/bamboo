@@ -2,25 +2,32 @@
   (:refer-clojure :rename {name clojure-name})
   (:require [bamboo.array :as array]
             [bamboo.dtype :as dtype]
+            [bamboo.utility :refer [in? to-vector]]
             [lang.core :refer [ndarray-expr]]
-            [numcloj.core :as np]))
+            [numcloj.core :as np]
+            [numcloj.ndarray :as nd]))
 
-;;;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.html#pandas.Index
+;;;; https://pandas.pydata.org/pandas-docs/stable/reference/indexing.html
 
-;;;
-;;; Index objects
-;;; TODO: Float64Index, Int64Index, UInt64Index, IntervalIndex, 
-;;; MultiIndex, PeriodIndex, TimedeltaIndex
+(declare to-numpy)
 
-(defn- index? [a]
+(defn- index? 
   "Return true if this is any type of index"
+  [a]
   (and (map? a) (isa? dtype/bamboo-hierarchy (:dtype a) :dtype/index)))
 
-(defn- copy-index [idx]
+(defn- copy-index
   "Copy an index (if it has data)"
+  [idx]
   (if (some? (:data idx))
-    (assoc idx :data (array/array (:data idx) :copy true))
+    (update-in idx [:data] array/array :copy true)
     idx))
+
+(defn- hash-array
+  "Hash an arrray"
+  [a]
+  (zipmap (nd/tolist (array/to-numpy a :copy false)) 
+          (range (first (:shape a)))))
 
 ;;; Index
 (defn index
@@ -33,39 +40,15 @@
     (let [a (array/array data :dtype dtype :copy copy)]
       (merge {:dtype :dtype/index
               :data a
+              :loc (hash-array a)
               :name name}
              (select-keys a [:shape :ndim
                              :size :nbytes])))))
   
-;;; DatetimeIndex
-(defn datetimeindex
-  "Immutable ndarray of datetime64 data, represented internally as int64, 
-   and which can be boxed to Timestamp objects that are subclasses of 
-   datetime and carry metadata such as frequency information."
-  [data & {:keys [copy freq tz ambiguous name dayfirst yearfirst]
-           :or {copy false ambiguous :raise dayfirst false yearfirst false}}]
-  (if (index? data)
-    (if (true? copy) (copy-index data) data)
-    {:dtype :dtype/datetimeindex
-     :data data
-     :freq freq
-     :tz tz}))
-
-;;; RangeIndex
-(defn rangeindex
-  "Immutable Index implementing a monotonic integer range"
-  [start & {:keys [stop step name]
-            :or {step 1}}]
-  {:dtype :dtype/rangeindex
-   :name name
-   :start (if (some? stop) start 0)
-   :stop (if (some? stop) stop start)
-   :step step})
-
-;;; Attributes
-
-(defn T [idx]
+;; Properties
+(defn T
   "Return the transpose, which is by defintion self"
+  [idx]
   idx)
 
 (defmulti array
@@ -77,8 +60,8 @@
 
 (defn to-numpy
   "A NumCloj ndarray representing the values in this Series or Index"
-  [a]
-  (:data (array a)))
+  [idx & {:keys [copy] :or {copy false}}]
+  (array/to-numpy (array idx)))
 
 (defmulti dtype
   "Return the dtype object of the underlying data"
@@ -86,14 +69,79 @@
 (defmethod dtype :default [idx] (:dtype idx))
 (defmethod dtype :dtype/rangeindex [idx] :dtype/int64)
 
-(defmulti delete
-  "Make new Index with passed location (-s) deleted"
+;; Modifying and computations
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.drop.html
+(defmulti drop
+  "Make new Index with passed list of labels deleted"
   :dtype)
-(defmethod delete :default [idx loc] 
+(defmethod drop :default 
+  [idx labels & {:keys [errors] :or {errors :raise}}] 
   (let [a (to-numpy idx)
-        indices (np/flatnonzero 
-                 (ndarray-expr a #(= % loc) :dtype :dtype/bool))]
-    (index (np/delete a indices))))
+        _labels (to-vector labels)
+        indices (vec (vals (select-keys (:loc idx) _labels)))]
+    (if (and (= :raise errors) (not= (count _labels) (count indices)))
+      (throw (ex-info "Not all labels could be found" {:type :KeyError :labels _labels}))
+      (index (np/delete a indices)))))
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.equals.html
+(defmulti equals
+  "Determine if two Index objects contain the same elements"
+  :dtype)
+(defmethod equals :default
+  [idx other]
+  (np/array-equal (to-numpy idx) (to-numpy other)))
+
+;; Compatibility with MultiIndex
+;; Missing values
+;; Conversion
+;; Sorting
+;; Time-specific operations
+;; Combining / joining / set operations
+;; Selecting
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.get_loc.html#pandas.Index.get_loc
+(defmulti get-loc
+  "Get integer location, slice or boolean mask for requested label"
+  :dtype)
+(defmethod get-loc :default 
+  [idx label & {:keys [method tolerance]}]
+  (get (:loc idx) label))
+(defmethod get-loc :dtype/rangeindex
+  [idx label & {:keys [method tolerance]}]
+  ; TODO - deal with stepped/negative/non-zero starting indices..
+  label)
+;;; Numeric Index
+
+;; RangeIndex
+(defn rangeindex
+  "Immutable Index implementing a monotonic integer range"
+  [start & {:keys [stop step name]
+            :or {step 1}}]
+  (let [idx {:dtype :dtype/rangeindex
+             :name name
+             :start (if (some? stop) start 0)
+             :stop (if (some? stop) stop start)
+             :step step}]
+    (assoc idx :size (count (range (:start idx) (:stop idx) (:step idx))))))
+
+;;; DatetimeIndex
+(defn datetimeindex
+  "Immutable ndarray of datetime64 data, represented internally as int64, 
+   and which can be boxed to Timestamp objects that are subclasses of 
+   datetime and carry metadata such as frequency information."
+  [data & {:keys [copy freq tz ambiguous name dayfirst yearfirst]
+           :or {copy false ambiguous :raise dayfirst false yearfirst false}}]
+  (if (index? data)
+    (if (true? copy) (copy-index data) data)
+    (let [a (array/array data :dtype :dtype/int64 :copy copy)]
+      (merge {:dtype :dtype/datetimeindex
+              :data a
+              :loc (hash-array a)
+              :freq freq
+              :tz tz}
+             (select-keys a [:shape :ndim
+                             :size :nbytes])))))
 
 
 ; (defmulti hasnans

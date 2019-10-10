@@ -5,6 +5,7 @@
 (load-file "src/main/clojure/numcloj/array_buffer.clj")
 (load-file "src/main/clojure/numcloj/array/conversion.clj")
 (load-file "src/main/clojure/numcloj/array_creation.clj")
+(load-file "src/main/clojure/numcloj/rec.clj")
 (load-file "src/main/clojure/numcloj/functional.clj")
 
 (load-file "src/main/clojure/numcloj/array/item_manipulation.clj")

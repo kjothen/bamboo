@@ -1,17 +1,29 @@
 {:paths ["src/main/clojure"]
- :deps {proto-repl/proto-repl {:mvn/version "0.3.1"}
+ :deps {org.clojure/clojure {:mvn/version "1.10.0"}
         org.clojure/data.csv {:mvn/version "0.1.4"}
-        net.mikera/core.matrix {:mvn/version "0.62.0"}
-        net.mikera/vectorz-clj {:mvn/version "0.48.0"}
-        clojure.java-time {:mvn/version "0.3.2"}
-        com.taoensso/timbre {:mvn/version "4.10.0"}
         org.clojure/spec.alpha {:mvn/version "0.2.176"}
-        org.clojure/test.check {:mvn/version "0.9.0"}}
+        org.clojure/test.check {:mvn/version "0.9.0"}
+        com.taoensso/timbre {:mvn/version "4.10.0"}}
  :aliases 
- {:test 
+ {:nrepl
+  {:extra-deps {nrepl {:mvn/version "RELEASE"}}
+   :main-opts ["-m" "nrepl.cmdline"]}
+  :test 
   {:extra-paths ["src/test/clojure"]
    :extra-deps {com.cognitect/test-runner 
                 {:git/url "https://github.com/cognitect-labs/test-runner.git"
                  :sha "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
-    :main-opts ["-m" "cognitect.test-runner"]}}
+   :main-opts ["-m" "cognitect.test-runner" "-d" "src/test/clojure"]}
+  :eastwood
+  {:extra-deps {jonase/eastwood {:mvn/version "RELEASE"}}
+   :main-opts ["-m" "eastwood.lint" {:source-paths ["src/main/clojure"] 
+                                     :test-paths_ ["src/test/clojure"]}]}
+  :kibit {:extra-deps {org.clojure/tools.reader {:mvn/version "1.3.2"}
+                       tvaughan/kibit-runner {:mvn/version "0.1.0"}}
+          :main-opts ["-m" "kibit-runner.cmdline"]}
+  :bench {:extra-deps {criterium {:mvn/version "RELEASE"}}}
+  :jar 
+  {:extra-deps {seancorfield/depstar {:mvn/version "RELEASE"}}
+   :main-opts ["-m" "hf.depstar.jar"]}
+  }
  }

@@ -1,5 +1,5 @@
 (ns numcloj.array-buffer
-  (:refer-clojure :exclude [get reduce])
+  (:refer-clojure :exclude [get reduce set sort])
   (:import (java.util Arrays)))
 
 ;;;; an implementation of buffer based on java arrays
@@ -12,7 +12,7 @@
 (defmethod make-buffer :dtype/float64 [a] 
   (double-array 
    (if (contains? a :seq)
-     (map (fnil identity ##NaN) (:seq a))
+     (map (fnil identity Double/NaN) (:seq a))
      (:size a))))
 (defmethod make-buffer :dtype/int64 [a] (long-array (or (:seq a) (:size a))))
 
@@ -32,7 +32,13 @@
 (def set aset)
 (def size alength)
 
+(defn tolist [a] a)
+
 (defn equals [buf1 buf2] (Arrays/equals buf1 buf2))
+
+(defn sort-values 
+  ([buf] (Arrays/sort buf))
+  ([buf c] (Arrays/sort buf c)))
 
 (defn reduce
   [f data init]
@@ -64,7 +70,7 @@
        (partial pfn (:data src-data))))))
 
 (defn map-values
-  "A higher-performance equivalent to `(into dst (map f src))`
+  "A higher-performance equivalent to `(into dst (map #(f %1) src))`
    for buffers `src` and `dst`, where `dst` is of a fixed size"
   [f src dst]
   (let [afn (fn [f dst src]
@@ -72,11 +78,27 @@
                     ld (size dst)]
                 (loop [i 0]
                   (if (and (< i ls) (< i ld))
-                    (do
-                      (let [val (get src i)
-                            fval (f val)]
-                        (set dst i fval)
-                        (recur (unchecked-inc i))))
+                    (let [val (get src i)
+                          fval (f val)]
+                      (set dst i fval)
+                      (recur (unchecked-inc i)))
+                    dst))))
+        typed-afn (type-hint-array-fn afn f src dst)]
+    (typed-afn)))
+
+(defn map-indexed-values
+  "A higher-performance equivalent to `(into dst (map-indexed #(f %1 %2) src))`
+   for buffers `src` and `dst`, where `dst` is of a fixed size"
+  [f src dst]
+  (let [afn (fn [f dst src]
+              (let [ls (size src)
+                    ld (size dst)]
+                (loop [i 0]
+                  (if (and (< i ls) (< i ld))
+                    (let [val (get src i)
+                          fval (f i val)]
+                      (set dst i fval)
+                      (recur (unchecked-inc i)))
                     dst))))
         typed-afn (type-hint-array-fn afn f src dst)]
     (typed-afn)))
@@ -87,41 +109,38 @@
   [index src dst]
   (let [afn (fn [_ index dst src]
               (let [li (size index)
-                    ls (size src)
                     ld (size dst)]
                 (loop [i 0]
                   (if (and (< i li) (< i ld))
-                    (do
-                      (let [idx (get index i)
-                            val (get src idx)]
-                        (set dst i val)
-                        (recur (unchecked-inc i))))
+                    (let [idx (get index i)
+                          val (get src idx)]
+                      (set dst i val)
+                      (recur (unchecked-inc i)))
                     dst))))
         typed-afn (type-hint-array-fn afn identity index src dst)]
     (typed-afn)))
 
 (defn keep-indexed-indices
-  [f src dst]
-  "A higher-performance equivalent to `(into dst (keep-indexed #(when (f %2) %1) src))`
+  "A higher-performance equivalent to `(into dst (keep-indexed #(when #(f %2) %1) src))`
    for buffers `src` and `dst`, where `dst` has a fixed size"
+  [f src dst]
   (let [afn (fn [f dst src]
               (let [ls (size src)
                     ld (size dst)]
                 (loop [i 0
                        j 0]
                   (if (and (< i ls) (< j ld))
-                    (do
-                      (let [val (get src i)
-                            keep? (f i val)]
-                        (if keep? (set dst j i))
-                        (recur (unchecked-inc i)
-                               (if keep? (unchecked-inc j) j))))
+                    (let [val (get src i)
+                          keep? (f i val)]
+                      (if keep? (set dst j i))
+                      (recur (unchecked-inc i)
+                             (if keep? (unchecked-inc j) j)))
                     dst))))
         typed-afn (type-hint-array-fn afn f src dst)]
     (typed-afn)))
 
 (defn keep-indexed-values
-  "A higher-performance equivalent to `(into dst (keep-indexed #(when (f %2) %2) src))`
+  "A higher-performance equivalent to `(into dst (keep-indexed #(when #(f %2) %2) src))`
    for buffers `src` and `dst`, where `dst` has a fixed size"
   [f src dst]
   (let [afn (fn [f dst src]
@@ -130,12 +149,11 @@
                 (loop [i 0
                        j 0]
                   (if (and (< i ls) (< j ld))
-                    (do
-                      (let [val (get src i)
-                            keep? (f i val)]
-                        (if keep? (set dst j val))
-                        (recur (unchecked-inc i)
-                               (if keep? (unchecked-inc j) j))))
+                    (let [val (get src i)
+                          keep? (f i val)]
+                      (if keep? (set dst j val))
+                      (recur (unchecked-inc i)
+                             (if keep? (unchecked-inc j) j)))
                     dst))))
         typed-afn (type-hint-array-fn afn f src dst)]
     (typed-afn)))
@@ -149,12 +167,10 @@
                     ls (size src)]
                 (loop [i 0]
                   (if (and (< i li) (< i ls))
-                    (do
-                      (let [idx (get index i)
-                            val (get src i)]
-                        (set dst idx val)
-                        (recur (unchecked-inc i))))
+                    (let [idx (get index i)
+                          val (get src i)]
+                      (set dst idx val)
+                      (recur (unchecked-inc i)))
                     dst))))
         typed-afn (type-hint-array-fn afn identity index src dst)]
     (typed-afn)))
-

@@ -32,13 +32,76 @@
         index int64-index
         df (dataframe vs :columns columns :index index)]
     ;; drop first column
-    (is (equals (drop df (nth columns 0))
-                (dataframe (nthrest vs 1)
-                           :columns (nthrest columns 1)
-                           :index index)))
+    (let [expected (dataframe (nthrest vs 1)
+                              :columns (nthrest columns 1)
+                              :index index)]
+      (is (equals expected (drop df (nth columns 0))))
+      (is (equals expected (drop df :columns (nth columns 0)))))
+
     ;; drop last two columns
-    (let [n (- (count vs) 2)]
-      (is (equals (drop df (take-last 2 columns))
-                  (dataframe (take n vs)
-                             :columns (take n columns)
-                             :index index))))))
+    (let [n (- (count columns) 2)
+          expected (dataframe (take n vs)
+                              :columns (take n columns)
+                              :index index)]
+      (is (equals expected (drop df (take-last 2 columns))))
+      (is (equals expected (drop df :columns (take-last 2 columns)))))
+
+    ;; drop first row
+    (let [expected (dataframe (mapv #(nthrest % 1) vs)
+                              :columns columns
+                              :index (nthrest index 1))]
+      (is (equals expected (drop df (nth index 0) :axis 1)))
+      (is (equals expected (drop df :index (nth index 0)))))
+
+    ;; drop last two rows
+    (let [m (- (count index) 2)
+          expected (dataframe (mapv #(take m %) vs)
+                              :columns columns
+                              :index (take m index))]
+      (is (equals expected (drop df (take-last 2 index) :axis 1)))
+      (is (equals expected (drop df :index (take-last 2 index)))))
+
+    ;; drop last two columns and last two rows
+    (let [m (- (count index) 2)
+          n (- (count columns) 2)
+          expected (dataframe (mapv #(take n %) (take m vs))
+                              :columns (take m columns)
+                              :index (take n index))]
+      (is (equals expected (drop df
+                                 :columns (take-last 2 columns)
+                                 :index (take-last 2 index)))))
+
+    ;; drop labels and columns/index errors
+    (is (thrown-with-msg? Exception #"^Cannot specify both 'labels' and 'index'/'columns'$"
+                          (drop df
+                                (nthrest vs 1)
+                                :columns (nthrest vs 1))))
+    (is (thrown-with-msg? Exception #"^Cannot specify both 'labels' and 'index'/'columns'$"
+                          (drop df
+                                (nthrest vs 1)
+                                :index (nthrest vs 1))))
+    (is (thrown-with-msg? Exception #"^Cannot specify both 'labels' and 'index'/'columns'$"
+                          (drop df
+                                (nthrest vs 1)
+                                :columns (nthrest vs 1)
+                                :index (nthrest vs 1))))
+
+    ;; drop label not found errors
+    (is (thrown-with-msg? Exception #"^Not all column values can be found:"
+                          (drop df "not-found")))
+    (is (thrown-with-msg? Exception #"^Not all column values can be found:"
+                          (drop df :columns "not-found")))
+    (is (thrown-with-msg? Exception #"^Not all index values can be found:"
+                          (drop df "not-found" :axis 1)))
+    (is (thrown-with-msg? Exception #"^Not all index values can be found:"
+                          (drop df :index "not-found")))
+    (is (thrown-with-msg? Exception #"^Not all index values can be found:"
+                          (drop df :columns "not-found" :index "not-found")))
+
+    ;; ignore not found errors
+    (is (equals df (drop df "not-found" :errors :ignore)))
+    (is (equals df (drop df :columns "not-found" :errors :ignore)))
+    (is (equals df (drop df "not-found" :axis 1 :errors :ignore)))
+    (is (equals df (drop df :index "not-found" :errors :ignore)))
+    (is (equals df (drop df :columns "not-found" :index "not-found" :errors :ignore)))))
+

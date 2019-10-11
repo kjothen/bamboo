@@ -1,7 +1,7 @@
 (ns bamboo.dataframe
   (:refer-clojure :exclude [drop nth transpose])
   (:require [clojure.pprint :as pprint]
-            [bamboo.utility :refer [array-zipmap in? to-vector]]
+            [bamboo.utility :refer [array-zipmap condas-> in? to-vector]]
             [bamboo.array :as array]
             [bamboo.index :as index]
             [lang.core :refer [ndarray-expr]]
@@ -79,16 +79,29 @@
     (when (and (some? labels) (not-every? nil? [columns index]))
       (throw (ex-info "Cannot specify both 'labels' and 'index'/'columns'"
                       {:type :ValueError})))
-        
-    (case axis
-      0 (let [_labels (to-vector labels)
-              indices (mapv #(index/get-loc (:columns df) %) _labels)
-              data (np/delete (array/to-numpy (:data df)) indices)]
-          (dataframe data
-                     :index (:index df)
-                     :columns (index/drop (:columns df) _labels)
-                     :copy true))
-      df)))
+    
+    (let [mvals (to-vector (or index (when (= 1 axis) labels)))
+          nvals (to-vector (or columns (when (= 0 axis) labels)))
+          m (when (seq mvals) (remove nil? (map #(index/get-loc (:index df) %) mvals)))
+          n (when (seq nvals) (remove nil? (map #(index/get-loc (:columns df) %) nvals)))]
+      (when (= errors :raise)
+        (when-not (= (count mvals) (count m))
+          (throw (ex-info (str "Not all index values can be found: " mvals)
+                          {:type :KeyError})))
+        (when-not (= (count nvals) (count n))
+          (throw (ex-info (str "Not all column values can be found: " nvals)
+                          {:type :KeyError}))))
+      
+      (println mvals m nvals n)
+      (dataframe (condas-> (array/to-numpy (:data df)) $
+                           (seq m) ((np/vectorize 
+                                     #(np/delete (array/to-numpy %) m)) $)
+                           (seq n) (np/delete $ n))
+                 :index (condas-> (:index df) $
+                                  (seq m) (index/drop $ mvals))
+                 :columns (condas-> (:columns df) $
+                                    (seq n) (index/drop $ nvals))
+                 :copy true))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html#pandas.DataFrame.equals
 (defn equals

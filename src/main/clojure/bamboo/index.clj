@@ -10,6 +10,7 @@
 ;;;; https://pandas.pydata.org/pandas-docs/stable/reference/indexing.html
 
 (declare to-numpy)
+(declare get-loc)
 
 (defn- index? 
   "Return true if this is any type of index"
@@ -79,7 +80,7 @@
   [idx labels & {:keys [errors] :or {errors :raise}}] 
   (let [a (to-numpy idx)
         _labels (to-vector labels)
-        indices (vec (vals (select-keys (:loc idx) _labels)))]
+        indices (mapv #(get-loc idx %) _labels)]
     (if (and (= :raise errors) (not= (count _labels) (count indices)))
       (throw (ex-info "Not all labels could be found" {:type :KeyError :labels _labels}))
       (index (np/delete a indices)))))

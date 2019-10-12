@@ -27,7 +27,7 @@
     (doall (map-indexed
             (fn [i a]
               (itemset a index (nth expected i))
-              (is (= (nth expected i) (item a index))))
+              (is (nan= (nth expected i) (item a index))))
             @as))))
 
 (deftest copy-test

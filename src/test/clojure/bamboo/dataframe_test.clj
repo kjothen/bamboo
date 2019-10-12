@@ -72,31 +72,35 @@
                                  :index (take-last 2 index)))))
 
     ;; drop labels and columns/index errors
-    (is (thrown-with-msg? Exception #"^Cannot specify both 'labels' and 'index'/'columns'$"
-                          (drop df
-                                (nthrest vs 1)
-                                :columns (nthrest vs 1))))
-    (is (thrown-with-msg? Exception #"^Cannot specify both 'labels' and 'index'/'columns'$"
-                          (drop df
-                                (nthrest vs 1)
-                                :index (nthrest vs 1))))
-    (is (thrown-with-msg? Exception #"^Cannot specify both 'labels' and 'index'/'columns'$"
-                          (drop df
-                                (nthrest vs 1)
-                                :columns (nthrest vs 1)
-                                :index (nthrest vs 1))))
+    (let [expected #"^Cannot specify both 'labels' and 'index'/'columns'$"]
+      (is (thrown-with-msg? Exception expected
+                            (drop df
+                                  (nthrest vs 1)
+                                  :columns (nthrest vs 1))))
+      (is (thrown-with-msg? Exception expected
+                            (drop df
+                                  (nthrest vs 1)
+                                  :index (nthrest vs 1))))
+      (is (thrown-with-msg? Exception expected
+                            (drop df
+                                  (nthrest vs 1)
+                                  :columns (nthrest vs 1)
+                                  :index (nthrest vs 1)))))
 
     ;; drop label not found errors
-    (is (thrown-with-msg? Exception #"^Not all column values can be found:"
-                          (drop df "not-found")))
-    (is (thrown-with-msg? Exception #"^Not all column values can be found:"
-                          (drop df :columns "not-found")))
-    (is (thrown-with-msg? Exception #"^Not all index values can be found:"
-                          (drop df "not-found" :axis 1)))
-    (is (thrown-with-msg? Exception #"^Not all index values can be found:"
-                          (drop df :index "not-found")))
-    (is (thrown-with-msg? Exception #"^Not all index values can be found:"
-                          (drop df :columns "not-found" :index "not-found")))
+    (let [expected #"^Not all column values can be found:"]
+      (is (thrown-with-msg? Exception expected
+                            (drop df "not-found")))
+      (is (thrown-with-msg? Exception expected
+                            (drop df :columns "not-found"))))
+    
+    (let [expected #"^Not all index values can be found:"]
+      (is (thrown-with-msg? Exception expected
+                            (drop df "not-found" :axis 1)))
+      (is (thrown-with-msg? Exception expected
+                            (drop df :index "not-found")))
+      (is (thrown-with-msg? Exception expected
+                            (drop df :columns "not-found" :index "not-found"))))
 
     ;; ignore not found errors
     (is (equals df (drop df "not-found" :errors :ignore)))

@@ -1,4 +1,5 @@
-(ns bamboo.utility)
+(ns bamboo.utility
+  (:require [taoensso.tufte :as tufte]))
 
 (defmacro condas->
   "A mixture of cond-> and as-> allowing more flexibility in the test and step forms"
@@ -12,9 +13,16 @@
 (defn nan? [x] (and (number? x) (Double/isNaN x)))
 (defn not-nan? [x] (not (nan? x)))
 
-(defn parse-long [s] (try (Long/parseLong s) (catch Exception e nil)))
-(defn parse-double [s] (try (Double/parseDouble s) (catch Exception e nil)))
-(defn parse-bool [s] (try (Boolean/parseBoolean s) (catch Exception e nil)))
+(defn parse-long [s]
+  (tufte/p
+   :bamboo/utility.parse-long
+   (try (Long/parseLong s) (catch Exception e nil))   
+   ))
+
+(defn parse-double [s] 
+  (tufte/p
+   :bamboo/utility.parse-double
+   (try (Double/parseDouble s) (catch Exception e nil))))
 
 (defn sum-vals 
   "Sum the values of the associative structure `m`, optionally

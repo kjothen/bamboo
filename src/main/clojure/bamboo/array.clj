@@ -1,6 +1,7 @@
 (ns bamboo.array
   (:refer-clojure :exclude [take])
-  (:require [numcloj.core :as np]
+  (:require [taoensso.tufte :as tufte]
+            [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]))
 
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.html
@@ -25,11 +26,13 @@
 (defn array 
   "Create an array"
   [data & {:keys [dtype copy] :or {copy true}}]
-  (if (array? data)
-    (if copy 
-      (array (np/array (:data data) :dtype dtype :copy true)) 
-      data)
-    (asarray data :dtype dtype :copy copy)))
+  (tufte/p
+   :bamboo/array.array
+   (if (array? data)
+     (if copy 
+       (array (np/array (:data data) :dtype dtype :copy true)) 
+       data)
+     (asarray data :dtype dtype :copy copy))))
 
 ;;; Attributes
 (defn values [a] (:data a))

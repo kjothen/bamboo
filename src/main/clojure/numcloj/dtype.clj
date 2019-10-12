@@ -1,4 +1,5 @@
-(ns numcloj.dtype)
+(ns numcloj.dtype
+  (:require [taoensso.tufte :as tufte]))
 
 (def numcloj-hierarchy (-> (make-hierarchy)
                            (derive :dtype/int64 :dtype/number)
@@ -70,5 +71,8 @@
       :dtype/bool)
     :else :dtype/object))
 
-(defn infer-dtype [coll] (from-frequencies (scan-dtypes coll)))
+(defn infer-dtype [coll]
+  (tufte/p
+   :numcloj/dtype.infer-dtype
+   (from-frequencies (scan-dtypes coll))))
 

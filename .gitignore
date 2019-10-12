@@ -5,3 +5,4 @@
 *.clx
 .nrepl-port
 .eastwood
+.rebel_readline_history

@@ -1,11 +1,28 @@
-(ns bamboo.utility)
+(ns bamboo.utility
+  (:require [taoensso.tufte :as tufte]))
+
+(defmacro condas->
+  "A mixture of cond-> and as-> allowing more flexibility in the test and step forms"
+  [expr name & clauses]
+  (assert (even? (count clauses)))
+  (let [pstep (fn [[test step]] `(if ~test ~step ~name))]
+    `(let [~name ~expr
+           ~@(interleave (repeat name) (map pstep (partition 2 clauses)))]
+       ~name)))
 
 (defn nan? [x] (and (number? x) (Double/isNaN x)))
 (defn not-nan? [x] (not (nan? x)))
 
-(defn parse-long [s] (try (Long/parseLong s) (catch Exception e nil)))
-(defn parse-double [s] (try (Double/parseDouble s) (catch Exception e nil)))
-(defn parse-bool [s] (try (Boolean/parseBoolean s) (catch Exception e nil)))
+(defn parse-long [s]
+  (tufte/p
+   :bamboo/utility.parse-long
+   (try (Long/parseLong s) (catch Exception e nil))   
+   ))
+
+(defn parse-double [s] 
+  (tufte/p
+   :bamboo/utility.parse-double
+   (try (Double/parseDouble s) (catch Exception e nil))))
 
 (defn sum-vals 
   "Sum the values of the associative structure `m`, optionally
@@ -29,6 +46,6 @@
   [ks vs]
   (apply array-map (interleave ks vs)))
 
-(defn to-vector [x] (if (coll? x) (vec x) (vector x)))
+(defn to-vector [x] (when (some? x) (if (coll? x) (vec x) (vector x))))
 
 (defn in? [x coll] (if (some #{x} coll) true false))

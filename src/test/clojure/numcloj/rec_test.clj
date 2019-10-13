@@ -1,6 +1,6 @@
 (ns numcloj.rec-test
-  (:require [clojure.test :refer :all]
-            [numcloj.rec :refer :all]))
+  (:require [clojure.test :refer [deftest is]]
+            [numcloj.rec :refer [argsort fromarrays]]))
 
 (deftest fromarrays-test
   (is (= [3 nil] (:shape (fromarrays [[1 2 3] [4 5 6]] 

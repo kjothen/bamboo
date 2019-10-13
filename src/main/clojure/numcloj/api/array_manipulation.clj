@@ -1,9 +1,7 @@
 (ns numcloj.api.array-manipulation
-  (:refer-clojure :exclude [empty])
   (:require [numcloj.api.counting :refer [count-nonzero]]
-            [numcloj.array.conversion :refer [item]]
             [numcloj.array.item-manipulation :refer [put]]
-            [numcloj.array-creation :refer [asarray empty ones zeros]]
+            [numcloj.array-creation :refer [asarray empty* ones zeros]]
             [numcloj.array-buffer :as b]))
 
 ;;;; Array manipulation routines
@@ -36,7 +34,7 @@
     (if (some? where)
       (let [_where (asarray where)]
         (b/keep-indexed-values
-         (fn [idx _] (= 1 (b/get (:data _where) idx))) _src dst))
+         (fn [idx _] (= 1 (b/get* (:data _where) idx))) _src dst))
       (b/map-values identity _src dst))))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.delete.html#numpy.delete
@@ -50,7 +48,7 @@
         mask (put (ones (:size _a) :dtype :dtype/int64)
                   _obj
                   (zeros (:size _a) :dtype :dtype/int64))
-        out (empty (count-nonzero mask) :dtype (:dtype _a))]
+        out (empty* (count-nonzero mask) :dtype (:dtype _a))]
     (copyto out _a :where mask)
     out))
 

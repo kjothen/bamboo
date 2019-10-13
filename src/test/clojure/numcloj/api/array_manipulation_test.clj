@@ -1,14 +1,12 @@
 (ns numcloj.api.array-manipulation-test
-  (:refer-clojure :exclude [all any empty get])
-  (:require [clojure.test :refer :all]
+  (:refer-clojure :exclude [all any])
+  (:require [clojure.test :refer [deftest is use-fixtures]]
             [numcloj.test-utility :refer [as vs array-fixture
-                                          random-samples invert-samples
+                                          rand-samples invert-samples
                                           samples->mask ]]
-            [numcloj.api.array-manipulation :refer :all]
+            [numcloj.api.array-manipulation :refer [copyto delete]]
             [numcloj.api.logic.comparison :refer [array-equal]]
-            [numcloj.array.conversion :refer [item]]
-            [numcloj.array-creation :refer [asarray copy empty]]
-            [numcloj.utility :refer [nan=]]))
+            [numcloj.array-creation :refer [asarray copy empty*]]))
 
 ;; fixtures
 
@@ -17,10 +15,10 @@
 ;; tests
 
 (deftest copyto-test
-  (let [index (sort (random-samples))
+  (let [index (sort (rand-samples))
         where (samples->mask index)
-        dst-as (mapv (fn [[k v]] (empty (count index) :dtype k)) vs)
-        expected (mapv (fn [[k v]] (asarray (mapv #(nth v %) index))) vs)]
+        dst-as (mapv (fn [[k _]] (empty* (count index) :dtype k)) vs)
+        expected (mapv (fn [[_ v]] (asarray (mapv #(nth v %) index))) vs)]
     (doall (map-indexed
             (fn [i _]
               (copyto (nth dst-as i) (nth @as i) :where where)
@@ -28,9 +26,9 @@
             vs))))
 
 (deftest delete-test
-  (let [index (random-samples)
+  (let [index (rand-samples)
         inverse-index (invert-samples index)
-        expected (mapv (fn [[k v]]
+        expected (mapv (fn [[_ v]]
                          (asarray (mapv #(nth v %) inverse-index))) vs)]
     (doall (map-indexed
             (fn [i _]

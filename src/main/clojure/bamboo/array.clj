@@ -1,5 +1,4 @@
 (ns bamboo.array
-  (:refer-clojure :exclude [take])
   (:require [taoensso.tufte :as tufte]
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]))
@@ -47,14 +46,14 @@
   (asarray (np/argsort (:data a))))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.take.html
-(defn take
+(defn take*
   "Take elements from an array"
   [a indices & {:keys [allow-fill fill-value]
                 :or {allow-fill false}}]
   (if (array? indices)
-    (array (np/take (to-numpy a) (to-numpy indices)))
+    (array (np/take* (to-numpy a) (to-numpy indices)))
     (if (sequential? indices)
-      (array (np/take (to-numpy a) indices))
+      (array (np/take* (to-numpy a) indices))
       (array [(ndarray/item (to-numpy a) indices)]))))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.to_numpy.html

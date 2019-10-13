@@ -25,6 +25,11 @@
                        tvaughan/kibit-runner {:mvn/version "0.1.0"}}
           :main-opts ["-m" "kibit-runner.cmdline"]}
   :bench {:extra-deps {criterium {:mvn/version "RELEASE"}}}
+  :cloverage {:extra-paths ["src/test/clojure" "src/test/resources"]
+              :extra-deps {cloverage {:mvn/version "RELEASE"}}
+              :main-opts ["-m" "cloverage.coverage"
+                          "-p" "src/main/clojure"
+                          "-s" "src/test/clojure"]}
   :jar
   {:extra-deps {seancorfield/depstar {:mvn/version "RELEASE"}}
    :main-opts ["-m" "hf.depstar.jar"]}

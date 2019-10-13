@@ -15,7 +15,7 @@
 (defn item
   "Copy an element of an array to a standard scalar and return it"
   [a i]
-  (b/get (:data a) i))
+  (b/get* (:data a) i))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.tolist.html#numpy.ndarray.tolist
 (defn tolist
@@ -27,7 +27,7 @@
 (defn itemset
   "Insert scalar into an array (scalar is cast to array’s dtype, if possible)"
   [a i x]
-  (b/set (:data a) i x))
+  (b/set* (:data a) i x))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.copy.html#numpy.ndarray.copy
 (defn copy

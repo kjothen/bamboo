@@ -32,7 +32,7 @@
               java.lang.Integer (update acc :dtype/int64 inc)
               java.lang.Long (update acc :dtype/int64 inc)
               java.lang.String (update acc :dtype/object inc)
-              clojure.lang.PersistentArrayMap (update acc :dtype/object inc) ; for records
+              clojure.lang.PersistentArrayMap (update acc :dtype/object inc)
               clojure.lang.Keyword (update acc :keyword inc)
               nil (update acc :nil inc)
               (reduced (assoc acc :error (inc (sum-vals acc))))))

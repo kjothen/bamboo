@@ -25,7 +25,7 @@
 
 (defn- column-row
   [df]
-  (cons (:name (:index df))
+  (cons (:name* (:index df))
         (ndarray/tolist (index/to-numpy (:columns df)))))
 
 (defn- data-rows

@@ -1,5 +1,4 @@
 (ns numcloj.ndarray
-  (:refer-clojure :exclude [take])
   (:require [numcloj.array.conversion :as conversion]
             [numcloj.array.item-manipulation :as item-manipulation]
             [numcloj.array-creation :as array-creation]))
@@ -19,7 +18,7 @@
 
 ;; Item selection and manipulation
 (def put item-manipulation/put)
-(def take item-manipulation/take)
+(def take* item-manipulation/take*)
 (def argsort item-manipulation/argsort)
 
 ;; Calculation

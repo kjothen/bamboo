@@ -1,7 +1,6 @@
 (ns numcloj.array.item-manipulation
-  (:refer-clojure :exclude [empty take])
   (:require [numcloj.array.conversion :refer [item]]
-            [numcloj.array-creation :refer [asarray empty]]
+            [numcloj.array-creation :refer [asarray empty*]]
             [numcloj.array-buffer :as b]
             [numcloj.functional :as f]))
 
@@ -18,7 +17,7 @@
     (asarray (b/assoc-index _ind _v a))))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.take.html#numpy.ndarray.take
-(defn take
+(defn take*
   "Take elements from an array along an axis"
   [a indices & {:keys [axis out mode]}]
   (let [vf (f/vectorize (partial item a) :otypes [(:dtype a)])]
@@ -30,10 +29,10 @@
   [a & {:keys [axis kind order]
         :or {axis -1 kind :stable}}]
   (let [len (:size a)
-        indexed-a (empty len :dtype :dtype/object)
-        dst (empty len :dtype :dtype/int64)
-        comp-fn #(compare (b/get %1 1) (b/get %2 1))]
+        indexed-a (empty* len :dtype :dtype/object)
+        dst (empty* len :dtype :dtype/int64)
+        comp-fn #(compare (b/get* %1 1) (b/get* %2 1))]
     (b/map-indexed-values #(:data (asarray [%1 %2])) a indexed-a)
     (b/sort-values (:data indexed-a) comp-fn)
-    (b/map-values #(long (b/get % 0)) indexed-a dst)
+    (b/map-values #(long (b/get* % 0)) indexed-a dst)
     (asarray dst)))

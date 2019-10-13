@@ -1,8 +1,8 @@
 (ns bamboo.array-test
   (:refer-clojure :exclude [all any])
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [numcloj.core :as np]
-            [bamboo.array :refer :all]))
+            [bamboo.array :refer [array to-numpy]]))
 
 (deftest object-array-tests 
   (let [data [nil Double/NaN "a" 1 true 42.7]

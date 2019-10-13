@@ -1,10 +1,10 @@
 (ns numcloj.array.conversion-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is use-fixtures]]
             [numcloj.test-utility :refer [as array-fixture vs
-                                          random-sample random-values]]
+                                          rand-sample random-values]]
             [numcloj.api.logic.comparison :as comparison]
-            [numcloj.array-creation :refer [asarray empty]]
-            [numcloj.array.conversion :refer :all]
+            [numcloj.array-creation :refer [asarray empty*]]
+            [numcloj.array.conversion :refer [copy fill item itemset]]
             [numcloj.utility :refer [nan=]]))
 
 ;; fixtures
@@ -14,15 +14,15 @@
 ;; tests
 
 (deftest item-test
-  (let [index (random-sample)
-        expected (mapv (fn [[k v]] (nth v index)) vs)]
+  (let [index (rand-sample)
+        expected (mapv (fn [[_ v]] (nth v index)) vs)]
     (doall (map-indexed 
             (fn [i v] (is (nan= (nth expected i)
                                 (item (nth @as i) index)))) 
             @as))))
 
 (deftest itemset-test
-  (let [index (random-sample)
+  (let [index (rand-sample)
         expected (random-values)]
     (doall (map-indexed
             (fn [i a]
@@ -38,11 +38,11 @@
             @as))))
 
 (deftest fill-test
-  (let [size (random-sample)
+  (let [size (rand-sample)
         expected (random-values)]
     (doall (map-indexed
-            (fn [i [k v]]
-              (let [a (empty size :dtype k)]
+            (fn [i [k _]]
+              (let [a (empty* size :dtype k)]
                 (fill a (nth expected i))
                 (is (comparison/array-equal
                      (asarray (repeat size (nth expected i)))

@@ -5,6 +5,8 @@
             [numcloj.array-creation :refer [asarray empty* recarray]]
             [numcloj.utility :refer [array-zipmap]]))
 
+;; an ndarray of objects, where each object is a clojure array-map
+
 (defn fromarrays
   "Create a record array from a (flat) list of arrays"
   [array-list & {:keys [dtype shape formats names titles aligned byteorder]
@@ -23,18 +25,8 @@
   [a & {:keys [axis kind order]
         :or {axis -1 kind :stable}}]
   (let [len (:size a)
-        indexed-a (empty* len :dtype :dtype/object)
-        dst (empty* len :dtype :dtype/int64)
         ks (or order (:names a))
-        comp-fn #(reduce (fn [_ k]
-                           (let [x (get (b/get* %1 1) k)
-                                 y (get (b/get* %2 1) k)
-                                 res (compare x y)]
-                             (if (neg? res) 
-                               (reduced res)
-                               res)))
-                         0 ks)]
-    (b/map-indexed-values #(:data (asarray [%1 %2])) a indexed-a)
-    (b/sort-values (:data indexed-a) comp-fn)
-    (b/map-values #(long (b/get* % 0)) indexed-a dst)
-    (asarray dst)))
+        columns (zipmap (range len) (:data a))
+        keyfn (fn [m] (vec (vals (select-keys (second m) ks))))
+        result (map first (sort-by keyfn columns))]
+    (asarray (b/from-sequential :dtype/int64 result))))

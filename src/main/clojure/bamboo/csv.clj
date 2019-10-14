@@ -27,7 +27,7 @@
    otherwise returns nil"
   [s na-values]
   (try (let [d (Double/parseDouble s)]
-         (when-not (nan? d) d))
+         (when-not (Double/isNaN d) d))
        (catch Exception e nil)))
 
 (defn parse-string [s] (tufte/p :bamboo/csv.parse-string (when (seq s) s)))
@@ -42,7 +42,7 @@
         (or (parse-long s') (parse-double s' na-values) (parse-string s'))))))
 
 (defn- read-rows
-  "Returns vectors of parsed rows, placing the headers (if any) in the last row"
+  "Returns vectors of parsed rows, placing the headers (if any) in the first row"
   [reader sep quote-char opts]
   (let [{:keys [header usecols nrows true-values false-values na-values
                 skip-blank-lines skipfooter skipinitialspace skiprows
@@ -77,14 +77,14 @@
         header-row (when header (map header-fn (nth rows header)))
         data-rows (pmap row-fn (if header (nthrest rows (inc header)) rows))]
     (if header
-      (concat data-rows (list header-row)) 
+      (list* header-row data-rows) 
       data-rows)))
 
 (defn- column-names
   [rows header? names prefix]
   (cond
     (some? names) (to-vector names)
-    header? (last rows)
+    header? (first rows)
     :else (let [n (reduce max 0 (map count rows))]
             (map #(str prefix %) (range n)))))
 
@@ -149,6 +149,6 @@
                  :comment* comment*})
           header? (int? header)
           columns (column-names rows header? names prefix)
-          data (if header? (butlast rows) rows)
+          data (if header? (rest rows) rows)
           transposed (apply map vector (pad-rows data (count columns)))]
       (dataframe/dataframe transposed :columns columns))))

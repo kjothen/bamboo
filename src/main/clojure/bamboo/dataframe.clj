@@ -51,7 +51,7 @@
 (defn iat
   "Access a single value for a row/column pair by integer position"
   [df index column]
-  (tufte/p ::iat (nth* (nth* (:data df) column) index)))
+  (tufte/p :dataframe/iat (nth* (nth* (:data df) column) index)))
 
 (defn iloc
   "Purely integer-location based indexing for selection by position"
@@ -155,11 +155,14 @@
                      (array/argsort (first columns))
                      (array/array (np/argsort (np/rec.fromarrays
                                                (map array/to-numpy columns)
-                                               :names _by))))]
-       (dataframe (array/to-numpy (:data df))
+                                               :names _by))))
+           index (index/index (array/take* (index/array (:index df))
+                                           indices))
+           data (map #(array/take* % indices)
+                     (ndarray/tolist (array/to-numpy (:data df))))]
+       (dataframe data
                   :columns (:columns df)
-                  :index (index/index (array/take* (index/array (:index df))
-                                                  indices))
+                  :index index
                   :copy false)))))
 
 ;;; Combining / joining / merging

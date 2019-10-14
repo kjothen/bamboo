@@ -1,5 +1,4 @@
 (ns bamboo.dataframe
-  (:refer-clojure :exclude [drop nth transpose])
   (:require [taoensso.tufte :as tufte]
             [bamboo.utility :refer [array-zipmap condas-> in? to-vector]]
             [bamboo.array :as array]
@@ -47,12 +46,12 @@
 ;;; Conversion
 
 ;;; Indexing, iteration
-(defn- nth [a n] (ndarray/item (array/to-numpy a) n))
+(defn- nth* [a n] (ndarray/item (array/to-numpy a) n))
   
 (defn iat
   "Access a single value for a row/column pair by integer position"
   [df index column]
-  (tufte/p ::iat (nth (nth (:data df) column) index)))
+  (tufte/p :dataframe/iat (nth* (nth* (:data df) column) index)))
 
 (defn iloc
   "Purely integer-location based indexing for selection by position"
@@ -65,7 +64,7 @@
 ;;; Reindexing / Selection / label manipulation
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.drop.html#pandas.DataFrame.drop
-(defn drop
+(defn drop*
   "Drop specified labels (or columns and indices) from rows or columns"
   {:arglists '([df labels? & {:keys [index columns axis level inplace errors]
                               :or {axis 0 inplace false errors :raise}}])}
@@ -87,8 +86,10 @@
 
      (let [mvals (to-vector (or index (when (= 1 axis) labels)))
            nvals (to-vector (or columns (when (= 0 axis) labels)))
-           m (when (seq mvals) (remove nil? (map #(index/get-loc (:index df) %) mvals)))
-           n (when (seq nvals) (remove nil? (map #(index/get-loc (:columns df) %) nvals)))]
+           m (when (seq mvals) 
+               (remove nil? (map #(index/get-loc (:index df) %) mvals)))
+           n (when (seq nvals) 
+               (remove nil? (map #(index/get-loc (:columns df) %) nvals)))]
        (when (= errors :raise)
          (when-not (= (count mvals) (count m))
            (throw (ex-info (str "Not all index values can be found: " mvals)
@@ -102,9 +103,9 @@
                                       #(np/delete (array/to-numpy %) m)) $)
                             (seq n) (np/delete $ n))
                   :index (condas-> (:index df) $
-                                   (seq m) (index/drop $ mvals))
+                                   (seq m) (index/drop* $ mvals))
                   :columns (condas-> (:columns df) $
-                                     (seq n) (index/drop $ nvals))
+                                     (seq n) (index/drop* $ nvals))
                   :copy true)))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html#pandas.DataFrame.equals
@@ -112,11 +113,9 @@
   "Test whether two objects contain the same elements"
   [df other]
   (and (= (:shape df) (:shape other))
-       (index/equals (:columns df) (:columns other))
-       (index/equals (:index df) (:index df))
        (reduce
-        #(and %1 (let [a (nth (:data df) %2)
-                       other-a (nth (:data other) %2)]
+        #(and %1 (let [a (nth* (:data df) %2)
+                       other-a (nth* (:data other) %2)]
                    (and (= (:shape a) (:shape other-a))
                         (np/array-equal (array/to-numpy a)
                                         (array/to-numpy other-a)))))
@@ -127,11 +126,11 @@
 ;;; Reshaping, sorting, transposing
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.transpose.html#pandas.DataFrame.transpose
-(defn transpose 
+(defn transpose* 
   "Transpose index and columns"
   [df & {:keys [copy] :or {copy false}}]
   (tufte/p
-   :bamboo/dataframe.transpose
+   :bamboo/dataframe.transpose*
    (let [m (first (:shape df))
          n (second (:shape df))
          data (mapv (fn [i] (mapv (fn [j] (iat df i j)) (range n))) (range m))]
@@ -151,16 +150,19 @@
    (if (= 0 axis)
      (let [_by (to-vector by)
            positions (map #(index/get-loc (:columns df) %) _by)
-           columns (mapv #(nth (:data df) %) positions)
+           columns (mapv #(nth* (:data df) %) positions)
            indices (if (= 1 (count columns))
                      (array/argsort (first columns))
                      (array/array (np/argsort (np/rec.fromarrays
                                                (map array/to-numpy columns)
-                                               :names _by))))]
-       (dataframe (array/to-numpy (:data df))
+                                               :names _by))))
+           index (index/index (array/take* (index/array (:index df))
+                                           indices))
+           data (map #(array/take* % indices)
+                     (ndarray/tolist (array/to-numpy (:data df))))]
+       (dataframe data
                   :columns (:columns df)
-                  :index (index/index (array/take (index/array (:index df))
-                                                  indices))
+                  :index index
                   :copy false)))))
 
 ;;; Combining / joining / merging
@@ -171,6 +173,5 @@
 ;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.DataFrame.from_dict.html#pandas.DataFrame.from_dict
 (defn from-dict [data & {:keys [orient dtype columns]
                          :or {orient :columns}}]
-  ; TODO: support constructing dataframe from rows to make csv easier
   
   )

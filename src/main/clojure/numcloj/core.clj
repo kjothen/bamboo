@@ -1,5 +1,4 @@
 (ns numcloj.core
-  (:refer-clojure :exclude [empty take])
   (:require [numcloj.api.array-manipulation :as array-manipulation]
             [numcloj.api.counting :as counting]
             [numcloj.api.logic.array-contents :as logic.array-contents]
@@ -18,7 +17,7 @@
 
 ;;; Array creation routines
 ;; Ones and zeros
-(def empty array-creation/empty)
+(def empty* array-creation/empty*)
 (def empty-like array-creation/empty-like)
 (def full array-creation/full)
 (def full-like array-creation/full-like)
@@ -63,13 +62,13 @@
         f (if (= :dtype/bool (:dtype _a))
             #(true? %2)
             #(not (zero? %2)))]
-    (asarray (b/keep-indexed-indices f _a (empty n :dtype :dtype/int64)))))
+    (asarray (b/keep-indexed-indices f _a (empty* n :dtype :dtype/int64)))))
 
 (defn put [a indices values & {:keys [mode]}]
   (ndarray/put (asarray a) indices :mode mode))
 
-(defn take [a indices & {:keys [axis out mode]}]  
-  (ndarray/take (asarray a) indices :axis axis :out out :mode mode))
+(defn take* [a indices & {:keys [axis out mode]}]  
+  (ndarray/take* (asarray a) indices :axis axis :out out :mode mode))
   
 ;;; Input and output
 ;;; Linear algebra (numpy.linalg)

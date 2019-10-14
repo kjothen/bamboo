@@ -28,14 +28,14 @@
   (reset! as nil))
 
 (defn array-fixture [f]
-  (reset! as (mapv (fn [[k v]] (asarray v)) vs))
+  (reset! as (mapv (fn [[_ v]] (asarray v)) vs))
   (f)
   (reset! as nil))
 
-(defn random-sample [] (max 1 (rand-int num-samples)))
+(defn rand-sample [] (max 1 (rand-int num-samples)))
 
-(defn random-samples []
-  (distinct (repeatedly (random-sample) random-sample)))
+(defn rand-samples []
+  (distinct (repeatedly (rand-sample) rand-sample)))
 
 (defn invert-samples [samples]
   (keep #(if-not (some #{%} samples) %) sample-range))

@@ -17,7 +17,7 @@ user=> (pp/pprint df)
 | 1 | 5 |  6 |  7 | 8.0 |
 | 2 | 9 | 10 | 11 | NaN |
 
-user=> (pp/pprint (dataframe/drop df :columns ["b" "d"] :index 1))
+user=> (pp/pprint (dataframe/drop* df :columns ["b" "d"] :index 1))
 
 |   | a |  c |
 |---+---+----|

@@ -1,5 +1,4 @@
 (ns bamboo.index
-  (:refer-clojure :rename {name clojure-name})
   (:require [bamboo.array :as array]
             [bamboo.dtype :as dtype]
             [bamboo.utility :refer [in? to-vector]]
@@ -34,7 +33,7 @@
 (defn index
   "Immutable ndarray implementing an ordered, sliceable set. 
    The basic object storing axis labels for all pandas objects"
-  [data & {:keys [dtype copy name tupleize-cols]
+  [data & {:keys [dtype copy name* tupleize-cols]
            :or {copy false tupleizecols true}}]
   (if (index? data)
     (if (true? copy) (copy-index data) data)
@@ -42,7 +41,7 @@
       (merge {:dtype :dtype/index
               :data a
               :loc (hash-array a)
-              :name name}
+              :name* name*}
              (select-keys a [:shape :ndim
                              :size :nbytes])))))
   
@@ -73,16 +72,17 @@
 ;; Modifying and computations
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.drop.html
-(defmulti drop
+(defmulti drop*
   "Make new Index with passed list of labels deleted"
   :dtype)
-(defmethod drop :default 
+(defmethod drop* :default 
   [idx labels & {:keys [errors] :or {errors :raise}}] 
   (let [a (to-numpy idx)
         _labels (to-vector labels)
         indices (mapv #(get-loc idx %) _labels)]
     (if (and (= :raise errors) (not= (count _labels) (count indices)))
-      (throw (ex-info "Not all labels could be found" {:type :KeyError :labels _labels}))
+      (throw (ex-info "Not all labels could be found" 
+                      {:type :KeyError :labels _labels}))
       (index (np/delete a indices)))))
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.equals.html
@@ -117,10 +117,10 @@
 ;; RangeIndex
 (defn rangeindex
   "Immutable Index implementing a monotonic integer range"
-  [start & {:keys [stop step name]
+  [start & {:keys [stop step name*]
             :or {step 1}}]
   (let [idx {:dtype :dtype/rangeindex
-             :name name
+             :name* name*
              :start (if (some? stop) start 0)
              :stop (if (some? stop) stop start)
              :step step}]

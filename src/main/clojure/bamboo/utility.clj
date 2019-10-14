@@ -2,7 +2,8 @@
   (:require [taoensso.tufte :as tufte]))
 
 (defmacro condas->
-  "A mixture of cond-> and as-> allowing more flexibility in the test and step forms"
+  "A mixture of cond-> and as-> allowing more flexibility
+   in the test and step forms"
   [expr name & clauses]
   (assert (even? (count clauses)))
   (let [pstep (fn [[test step]] `(if ~test ~step ~name))]
@@ -16,8 +17,7 @@
 (defn parse-long [s]
   (tufte/p
    :bamboo/utility.parse-long
-   (try (Long/parseLong s) (catch Exception e nil))   
-   ))
+   (try (Long/parseLong s) (catch Exception e nil))))
 
 (defn parse-double [s] 
   (tufte/p

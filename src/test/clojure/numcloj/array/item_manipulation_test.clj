@@ -1,11 +1,8 @@
 (ns numcloj.array.item-manipulation-test
-  (:require [clojure.test :refer :all]
-            [numcloj.test-utility :refer [as array-fixture vs
+  (:require [clojure.test :refer [deftest is use-fixtures]]
+            [numcloj.test-utility :refer [as array-fixture
                                           num-samples]]
-            [numcloj.api.logic.comparison :as comparison]
-            [numcloj.array-creation :refer [asarray empty]]
-            [numcloj.array.item-manipulation :refer :all]
-            [numcloj.utility :refer [nan=]]))
+            [numcloj.array.item-manipulation :refer [argsort]]))
 
 ;; fixtures
 

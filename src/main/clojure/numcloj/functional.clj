@@ -1,7 +1,6 @@
 (ns numcloj.functional
-  (:refer-clojure :exclude [empty])
   (:require [numcloj.array-buffer :as b]
-            [numcloj.array-creation :refer [asarray empty]]))
+            [numcloj.array-creation :refer [asarray empty*]]))
 
 ;;;; Functional Programming
 
@@ -12,5 +11,5 @@
   (fn [a]
     (let [_a (asarray a)
           otype (or (first otypes) (:dtype a))
-          o (empty (:size _a) :dtype otype)]
+          o (empty* (:size _a) :dtype otype)]
       (b/map-values f _a o))))

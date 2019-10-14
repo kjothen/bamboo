@@ -1,5 +1,4 @@
 (ns numcloj.array-creation
-  (:refer-clojure :exclude [empty])
   (:require [numcloj.array-buffer :as b]
             [numcloj.array.conversion :as conversion]
             [numcloj.dtype :as dtype]))
@@ -65,10 +64,14 @@
     :else (throw (ex-info (str "Cannot create ndarray from: " (type a))
                           {:type :ValueError}))))
 
-(defmethod asarray (Class/forName "[Z") [a] (ndarray (alength a) :dtype/bool :buffer a))
-(defmethod asarray (Class/forName "[D") [a] (ndarray (alength a) :dtype/float64 :buffer a))
-(defmethod asarray (Class/forName "[J") [a] (ndarray (alength a) :dtype/int64 :buffer a))
-(defmethod asarray (Class/forName "[Ljava.lang.Object;") [a] (ndarray (alength a) :dtype/object :buffer a))
+(defmethod asarray (Class/forName "[Z") [a] 
+  (ndarray (alength a) :dtype/bool :buffer a))
+(defmethod asarray (Class/forName "[D") [a] 
+  (ndarray (alength a) :dtype/float64 :buffer a))
+(defmethod asarray (Class/forName "[J") [a] 
+  (ndarray (alength a) :dtype/int64 :buffer a))
+(defmethod asarray (Class/forName "[Ljava.lang.Object;") [a] 
+  (ndarray (alength a) :dtype/object :buffer a))
 (defmethod asarray java.lang.Boolean [a] (asclojurearray (vector a)))
 (defmethod asarray java.lang.Double [a] (asclojurearray (vector a)))
 (defmethod asarray java.lang.Long [a] (asclojurearray (vector a)))
@@ -95,7 +98,7 @@
 ;;; Ones and zeros
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.empty.html#numpy.empty
-(defn empty
+(defn empty*
   "Return a new array of given shape and type, without initializing entries"
   [shape & {:keys [dtype order]
             :or {dtype :dtype/float64 order \C}}]
@@ -106,7 +109,7 @@
   "Return a new array with the same shape and type as a given array"
   [a & {:keys [dtype order subok shape] :or {subok true}}]
   (let [_a (asarray a)]
-    (empty (or shape (:size _a))
+    (empty* (or shape (:size _a))
            :dtype (or dtype (:dtype _a))
            :order order)))
 
@@ -116,7 +119,7 @@
   [shape fill-value & {:keys [:dtype :order]
                        :or {dtype (dtype/infer-dtype [fill-value])
                             order \C}}]
-  (let [a (empty shape
+  (let [a (empty* shape
                  :dtype dtype
                  :order order)]
     (conversion/fill a fill-value)

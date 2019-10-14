@@ -29,7 +29,8 @@
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.any.html
 (defmulti _any :dtype)
 (defmethod _any :default [a]
-  (throw (ex-info (str "cannot perform any with this array type: " (:dtype a)) {:type :TypeError})))
+  (throw (ex-info (str "cannot perform any with this array type: " (:dtype a)) 
+                  {:type :TypeError})))
 (defmethod _any :dtype/bool [a] (not-every? false? ^booleans (:data a)))
 (defmethod _any :dtype/number [a] (not-every? zero? (:data a)))
 (defmethod _any :dtype/object [a]

@@ -18,111 +18,111 @@
 (def bool-index [true false true false true])
 (def obj-index ["m" "n" "o" "p" "q"])
 
-; (deftest dataframe-test
-;   (let [columns obj-index
-;         index int64-index
-;         df (dataframe vs :columns columns :index index)]   
-;     (pprint/pprint df)
+(deftest dataframe-test
+  (let [columns obj-index
+        index int64-index
+        df (dataframe vs :columns columns :index index)]   
+    (pprint/pprint df)
     
-;     ;; expected shape, columns and index 
-;     (is (= [(count index) (count columns)] (:shape df)))
-;     (is (Arrays/equals (object-array columns)
-;                        (ndarray/tolist (index/to-numpy (:columns df)))))
-;     (is (Arrays/equals (long-array index) 
-;                        (ndarray/tolist (index/to-numpy (:index df)))))))
+    ;; expected shape, columns and index 
+    (is (= [(count index) (count columns)] (:shape df)))
+    (is (Arrays/equals (object-array columns)
+                       (ndarray/tolist (index/to-numpy (:columns df)))))
+    (is (Arrays/equals (long-array index) 
+                       (ndarray/tolist (index/to-numpy (:index df)))))))
 
-; (deftest drop*-test
-;   (let [columns obj-index
-;         index int64-index
-;         df (dataframe vs :columns columns :index index)]
+(deftest drop*-test
+  (let [columns obj-index
+        index int64-index
+        df (dataframe vs :columns columns :index index)]
 
-;     (pprint/pprint df)
+    (pprint/pprint df)
 
-;     ;; drop first column
-;     (let [expected (dataframe (nthrest vs 1)
-;                               :columns (nthrest columns 1)
-;                               :index index)]
-;       (pprint/pprint expected)
-;       (is (equals expected (drop* df (nth columns 0))))
-;       (is (equals expected (drop* df :columns (nth columns 0)))))
+    ;; drop first column
+    (let [expected (dataframe (nthrest vs 1)
+                              :columns (nthrest columns 1)
+                              :index index)]
+      (pprint/pprint expected)
+      (is (equals expected (drop* df (nth columns 0))))
+      (is (equals expected (drop* df :columns (nth columns 0)))))
 
-;     ;; drop last two columns
-;     (let [n (- (count columns) 2)
-;           expected (dataframe (take n vs)
-;                               :columns (take n columns)
-;                               :index index)]
-;       (pprint/pprint expected)
-;       (is (equals expected (drop* df (take-last 2 columns))))
-;       (is (equals expected (drop* df :columns (take-last 2 columns)))))
+    ;; drop last two columns
+    (let [n (- (count columns) 2)
+          expected (dataframe (take n vs)
+                              :columns (take n columns)
+                              :index index)]
+      (pprint/pprint expected)
+      (is (equals expected (drop* df (take-last 2 columns))))
+      (is (equals expected (drop* df :columns (take-last 2 columns)))))
 
-;     ;; drop* first row
-;     (let [expected (dataframe (mapv #(nthrest % 1) vs)
-;                               :columns columns
-;                               :index (nthrest index 1))]
-;       (pprint/pprint expected)
-;       (is (equals expected (drop* df (nth index 0) :axis 1)))
-;       (is (equals expected (drop* df :index (nth index 0)))))
+    ;; drop* first row
+    (let [expected (dataframe (mapv #(nthrest % 1) vs)
+                              :columns columns
+                              :index (nthrest index 1))]
+      (pprint/pprint expected)
+      (is (equals expected (drop* df (nth index 0) :axis 1)))
+      (is (equals expected (drop* df :index (nth index 0)))))
 
-;     ;; drop last two rows
-;     (let [m (- (count index) 2)
-;           expected (dataframe (mapv #(take m %) vs)
-;                               :columns columns
-;                               :index (take m index))]
-;       (pprint/pprint expected)
-;       (is (equals expected (drop* df (take-last 2 index) :axis 1)))
-;       (is (equals expected (drop* df :index (take-last 2 index)))))
+    ;; drop last two rows
+    (let [m (- (count index) 2)
+          expected (dataframe (mapv #(take m %) vs)
+                              :columns columns
+                              :index (take m index))]
+      (pprint/pprint expected)
+      (is (equals expected (drop* df (take-last 2 index) :axis 1)))
+      (is (equals expected (drop* df :index (take-last 2 index)))))
 
-;     ;; drop last two columns and last two rows
-;     (let [m (- (count index) 2)
-;           n (- (count columns) 2)
-;           expected (dataframe (mapv #(take n %) (take m vs))
-;                               :columns (take m columns)
-;                               :index (take n index))]
-;       (pprint/pprint expected)
-;       (is (equals expected (drop* df
-;                                   :columns (take-last 2 columns)
-;                                   :index (take-last 2 index)))))
+    ;; drop last two columns and last two rows
+    (let [m (- (count index) 2)
+          n (- (count columns) 2)
+          expected (dataframe (mapv #(take n %) (take m vs))
+                              :columns (take m columns)
+                              :index (take n index))]
+      (pprint/pprint expected)
+      (is (equals expected (drop* df
+                                  :columns (take-last 2 columns)
+                                  :index (take-last 2 index)))))
 
-;     ;; drop labels and columns/index errors
-;     (let [expected #"^Cannot specify both 'labels' and 'index'/'columns'$"]
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df
-;                                    (nthrest vs 1)
-;                                    :columns (nthrest vs 1))))
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df
-;                                    (nthrest vs 1)
-;                                    :index (nthrest vs 1))))
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df
-;                                    (nthrest vs 1)
-;                                    :columns (nthrest vs 1)
-;                                    :index (nthrest vs 1)))))
+    ;; drop labels and columns/index errors
+    (let [expected #"^Cannot specify both 'labels' and 'index'/'columns'$"]
+      (is (thrown-with-msg? Exception expected
+                            (drop* df
+                                   (nthrest vs 1)
+                                   :columns (nthrest vs 1))))
+      (is (thrown-with-msg? Exception expected
+                            (drop* df
+                                   (nthrest vs 1)
+                                   :index (nthrest vs 1))))
+      (is (thrown-with-msg? Exception expected
+                            (drop* df
+                                   (nthrest vs 1)
+                                   :columns (nthrest vs 1)
+                                   :index (nthrest vs 1)))))
 
-;     ;; drop label not found errors
-;     (let [expected #"^Not all column values can be found:"]
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df "not-found")))
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df :columns "not-found"))))
+    ;; drop label not found errors
+    (let [expected #"^Not all column values can be found:"]
+      (is (thrown-with-msg? Exception expected
+                            (drop* df "not-found")))
+      (is (thrown-with-msg? Exception expected
+                            (drop* df :columns "not-found"))))
     
-;     (let [expected #"^Not all index values can be found:"]
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df "not-found" :axis 1)))
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df :index "not-found")))
-;       (is (thrown-with-msg? Exception expected
-;                             (drop* df :columns "not-found" 
-;                                    :index "not-found"))))
+    (let [expected #"^Not all index values can be found:"]
+      (is (thrown-with-msg? Exception expected
+                            (drop* df "not-found" :axis 1)))
+      (is (thrown-with-msg? Exception expected
+                            (drop* df :index "not-found")))
+      (is (thrown-with-msg? Exception expected
+                            (drop* df :columns "not-found" 
+                                   :index "not-found"))))
 
-;     ;; ignore not found errors
-;     (pprint/pprint df)
-;     (is (equals df (drop* df "not-found" :errors :ignore)))
-;     (is (equals df (drop* df :columns "not-found" :errors :ignore)))
-;     (is (equals df (drop* df "not-found" :axis 1 :errors :ignore)))
-;     (is (equals df (drop* df :index "not-found" :errors :ignore)))
-;     (is (equals df (drop* df :columns "not-found" :index "not-found" 
-;                           :errors :ignore)))))
+    ;; ignore not found errors
+    (pprint/pprint df)
+    (is (equals df (drop* df "not-found" :errors :ignore)))
+    (is (equals df (drop* df :columns "not-found" :errors :ignore)))
+    (is (equals df (drop* df "not-found" :axis 1 :errors :ignore)))
+    (is (equals df (drop* df :index "not-found" :errors :ignore)))
+    (is (equals df (drop* df :columns "not-found" :index "not-found" 
+                          :errors :ignore)))))
 
 (deftest sort-values-test
   (let [columns obj-index

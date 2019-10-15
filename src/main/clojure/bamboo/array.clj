@@ -12,26 +12,21 @@
   "Convert the input to an array using numcloj"
   [data & {:keys [dtype copy] :or {copy true}}]
   (let [a (np/array data :dtype dtype :copy copy)]
-    (merge {:dtype :dtype/array
+    (merge {:objtype :objtype/array
             :data a}
-           (select-keys a [:nbytes :shape :ndim]))))
+           (select-keys a [:dtype :nbytes :shape :ndim]))))
 
-(defn- array? 
-  "Return true if this is a bamboo array"
-  [a] 
-  (and (map? a) (= (:dtype a) :dtype/array)))
+(defn- array? [a] (= :objtype/array (:objtype a)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.array.html
-(defn array 
+(defn array
   "Create an array"
   [data & {:keys [dtype copy] :or {copy true}}]
-  (tufte/p
-   :bamboo/array.array
-   (if (array? data)
-     (if copy 
-       (array (np/array (:data data) :dtype dtype :copy true)) 
-       data)
-     (asarray data :dtype dtype :copy copy))))
+  (cond
+    (array? data) (if copy 
+                    (array (np/array (:data data) :dtype dtype :copy true))
+                    data)
+    :else (asarray data :dtype dtype :copy copy)))
 
 ;;; Attributes
 (defn values [a] (:data a))

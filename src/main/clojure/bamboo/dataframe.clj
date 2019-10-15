@@ -47,17 +47,60 @@
 
 ;;; Indexing, iteration
 (defn- nth* [a n] (ndarray/item (array/to-numpy a) n))
-  
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iat.html  
 (defn iat
   "Access a single value for a row/column pair by integer position"
   [df index column]
   (tufte/p :dataframe/iat (nth* (nth* (:data df) column) index)))
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iloc.html
 (defn iloc
   "Purely integer-location based indexing for selection by position"
   ([df index] (array/array (map #(iat df index %) (range (second (:shape df))))))
   ([df index column] (iat df index column)))
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.loc.html
+(defn loc
+  "Access a group of rows and columns by label (s) or a boolean array"
+  ([df index-label] (loc df index-label nil))
+  ([df index-label column-label]
+   (let [label-type-fn (fn [label index]
+                         (cond
+                           (and (some? label) (not (coll? label))) :label
+                           (and (map? label)
+                                (= :objtype/slice (:objtype label))) :slice
+                           (and (sequential? label)
+                                (= (count label) (:size index))
+                                (every? boolean? label)) :mask
+                           (sequential? label) :labels
+                           (fn? label) :callable))
+         index-label-type (label-type-fn index-label (:index df))
+         column-label-type (label-type-fn column-label (:columns df))]
+     (when-not (or index-label-type column-label-type)
+       (throw (ex-info (str "Must specify either a single label, "
+                            "a list of labels, a slice, a boolean array "
+                            "or callable function: " index-label column-label)
+                       (:type :ValueError))))
+     (let [m (case index-label-type
+               :label (vector (index/get-loc (:index df) index-label))
+               :labels (map #(index/get-loc (:index df) %) index-label)
+               nil)
+           mvals (when (some? m) (array/take* (index/array (:index df)) m))
+           n (case column-label-type
+               :label (vector (index/get-loc (:columns df) column-label))
+               :labels (map #(index/get-loc (:columns df) %) column-label)
+               nil)
+           nvals (when (some? n) (array/take* (index/array (:columns df)) n))
+           data (condas-> (:data df) $
+                          (some? n) (array/take* $ n)
+                          (some? m) (map #(array/take* % m)
+                                         (ndarray/tolist (array/to-numpy $))))]
+       (dataframe data
+                  :index (if (some? mvals) (index/index mvals) (:index df))
+                  :columns (if (some? nvals) (index/index nvals) (:columns df))
+                  :copy false)))))
+    
 ;;; Binary operator functions
 ;;; Function application, GroupBy & Window
 ;;; Computations / Descriptive Stats
@@ -78,7 +121,8 @@
            [df-and-labels nil args]
            [df-and-labels (first args) (rest args)])]
      (when (every? nil? [labels columns index])
-       (throw (ex-info "Need to specify at least one of 'labels', 'index' or 'columns'"
+       (throw (ex-info (str "Need to specify at least one of "
+                            "'labels', 'index' or 'columns'")
                        {:type :ValueError})))
      (when (and (some? labels) (not-every? nil? [columns index]))
        (throw (ex-info "Cannot specify both 'labels' and 'index'/'columns'"
@@ -169,9 +213,3 @@
 ;;; Time series-related
 ;;; Plotting
 ;;; Serialization / IO / Conversion
-
-;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.DataFrame.from_dict.html#pandas.DataFrame.from_dict
-(defn from-dict [data & {:keys [orient dtype columns]
-                         :or {orient :columns}}]
-  
-  )

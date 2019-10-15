@@ -1,6 +1,6 @@
 (ns bamboo.dataframe-test
   (:require [clojure.test :refer [deftest is]]
-            [bamboo.dataframe :refer [dataframe drop* equals sort-values]]
+            [bamboo.dataframe :refer [dataframe drop* equals loc sort-values]]
             [bamboo.index :as index]
             [bamboo.pprint :as pprint]
             [numcloj.core :as np]
@@ -30,6 +30,41 @@
                        (ndarray/tolist (index/to-numpy (:columns df)))))
     (is (Arrays/equals (long-array index) 
                        (ndarray/tolist (index/to-numpy (:index df)))))))
+
+(deftest loc-test
+  (let [columns obj-index
+        index int64-index
+        df (dataframe vs :columns columns :index index)]
+    (pprint/pprint df)
+
+    ;; take single index
+    (let [expected (dataframe (map #(take 1 %) vs)
+                              :columns columns
+                              :index (take 1 index))]
+      (pprint/pprint expected)
+      (is (equals expected (loc df (first index)))))
+
+    ;; take multiple indices
+    (let [expected (dataframe (map #(take 2 %) vs)
+                              :columns columns
+                              :index (take 2 index))]
+      (pprint/pprint expected)
+      (is (equals expected (loc df (take 2 index)))))
+
+    ;; take multiple index, mutliple columns
+    (let [expected (dataframe (map #(take 1 %) (take 2 vs))
+                              :columns (take 2 columns)
+                              :index (take 1 index))]
+      (pprint/pprint expected)
+      (is (equals expected (loc df (first index) (take 2 columns)))))
+        
+    ;; take multiple indices, multiple columns
+    (let [expected (dataframe (map #(take 2 %) (take 2 vs))
+                              :columns (take 2 columns)
+                              :index (take 2 index))]
+      (pprint/pprint expected)
+      (is (equals expected (loc df (take 2 index) (take 2 columns)))))))
+    
 
 (deftest drop*-test
   (let [columns obj-index
@@ -83,6 +118,11 @@
                                   :columns (take-last 2 columns)
                                   :index (take-last 2 index)))))
 
+    ;; drop under-specified errors
+    (let [expected #"^Need to specify at least one of 'labels', 'index' or 'columns'"]
+      (is (thrown-with-msg? Exception expected
+                            (drop* df))))
+
     ;; drop labels and columns/index errors
     (let [expected #"^Cannot specify both 'labels' and 'index'/'columns'$"]
       (is (thrown-with-msg? Exception expected
@@ -105,14 +145,14 @@
                             (drop* df "not-found")))
       (is (thrown-with-msg? Exception expected
                             (drop* df :columns "not-found"))))
-    
+
     (let [expected #"^Not all index values can be found:"]
       (is (thrown-with-msg? Exception expected
                             (drop* df "not-found" :axis 1)))
       (is (thrown-with-msg? Exception expected
                             (drop* df :index "not-found")))
       (is (thrown-with-msg? Exception expected
-                            (drop* df :columns "not-found" 
+                            (drop* df :columns "not-found"
                                    :index "not-found"))))
 
     ;; ignore not found errors
@@ -121,7 +161,7 @@
     (is (equals df (drop* df :columns "not-found" :errors :ignore)))
     (is (equals df (drop* df "not-found" :axis 1 :errors :ignore)))
     (is (equals df (drop* df :index "not-found" :errors :ignore)))
-    (is (equals df (drop* df :columns "not-found" :index "not-found" 
+    (is (equals df (drop* df :columns "not-found" :index "not-found"
                           :errors :ignore)))))
 
 (deftest sort-values-test

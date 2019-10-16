@@ -1,6 +1,6 @@
 (ns bamboo.index
   (:require [bamboo.array :as array]
-            [bamboo.dtype :as dtype]
+            [bamboo.objtype :as objtype]
             [bamboo.utility :refer [in? to-vector]]
             [lang.core :refer [ndarray-expr]]
             [numcloj.core :as np]
@@ -11,10 +11,10 @@
 (declare to-numpy)
 (declare get-loc)
 
-(defn- index? 
+(defn- index?
   "Return true if this is any type of index"
   [a]
-  (and (map? a) (isa? dtype/bamboo-hierarchy (:dtype a) :dtype/index)))
+  (and (map? a) (isa? objtype/bamboo-hierarchy (:objtype a) :objtype/index)))
 
 (defn- copy-index
   "Copy an index (if it has data)"
@@ -38,7 +38,7 @@
   (if (index? data)
     (if (true? copy) (copy-index data) data)
     (let [a (array/array data :dtype dtype :copy copy)]
-      (merge {:dtype :dtype/index
+      (merge {:objtype :objtype/index
               :data a
               :loc (hash-array a)
               :name* name*}
@@ -53,9 +53,9 @@
 
 (defmulti array
   "The ExtensionArray of the data backing this Series or Index"
-  :dtype)
+  :objtype)
 (defmethod array :default [idx] (:data idx))
-(defmethod array :dtype/rangeindex [idx] 
+(defmethod array :objtype/rangeindex [idx] 
   (array/array (range (:start idx) (:stop idx) (:step idx))))
 
 (defn to-numpy
@@ -65,16 +65,27 @@
 
 (defmulti dtype
   "Return the dtype object of the underlying data"
-  :dtype)
+  :objtype)
 (defmethod dtype :default [idx] (:dtype idx))
-(defmethod dtype :dtype/rangeindex [idx] :dtype/int64)
+(defmethod dtype :objtype/rangeindex [idx] :dtype/int64)
 
 ;; Modifying and computations
+
+;https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.copy.html#pandas.Index.copy
+(defmulti copy
+  "Make a copy of this object"
+  :objtype)
+(defmethod copy :default
+  [idx & {:keys [name* deep dtype]
+          :or {deep true}}]
+  (copy-index idx))
+
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.drop.html
 (defmulti drop*
   "Make new Index with passed list of labels deleted"
-  :dtype)
+  (fn [idx labels & {:keys [errors] :or {errors :raise}}]
+    (:objtype idx)))
 (defmethod drop* :default 
   [idx labels & {:keys [errors] :or {errors :raise}}] 
   (let [a (to-numpy idx)
@@ -88,7 +99,7 @@
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.equals.html
 (defmulti equals
   "Determine if two Index objects contain the same elements"
-  :dtype)
+  :objtype)
 (defmethod equals :default
   [idx other]
   (np/array-equal (to-numpy idx) (to-numpy other)))
@@ -104,11 +115,11 @@
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.get_loc.html#pandas.Index.get_loc
 (defmulti get-loc
   "Get integer location, slice or boolean mask for requested label"
-  :dtype)
+  :objtype)
 (defmethod get-loc :default 
   [idx label & {:keys [method tolerance]}]
   (get (:loc idx) label))
-(defmethod get-loc :dtype/rangeindex
+(defmethod get-loc :objtype/rangeindex
   [idx label & {:keys [method tolerance]}]
   ; TODO - deal with stepped/negative/non-zero starting indices..
   label)
@@ -119,7 +130,7 @@
   "Immutable Index implementing a monotonic integer range"
   [start & {:keys [stop step name*]
             :or {step 1}}]
-  (let [idx {:dtype :dtype/rangeindex
+  (let [idx {:objtype :objtype/rangeindex
              :name* name*
              :start (if (some? stop) start 0)
              :stop (if (some? stop) stop start)
@@ -136,7 +147,7 @@
   (if (index? data)
     (if (true? copy) (copy-index data) data)
     (let [a (array/array data :dtype :dtype/int64 :copy copy)]
-      (merge {:dtype :dtype/datetimeindex
+      (merge {:objtype :objtype/datetimeindex
               :data a
               :loc (hash-array a)
               :freq freq

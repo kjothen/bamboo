@@ -38,7 +38,13 @@
   "Return the indices that would sort this array" 
   [a & {:keys [ascending kind]
         :or {ascending true}}]
-  (asarray (np/argsort (:data a))))
+  (asarray (np/argsort (values a))))
+
+;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.copy.html#pandas.arrays.PandasArray.copy
+(defn copy
+  "Return a copy of the array"
+  [a & {:keys [deep] :or {deep true}}]
+  (asarray (np/copy (values a))))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.take.html
 (defn take*
@@ -55,4 +61,4 @@
 (defn to-numpy
   "Convert the PandasArray to a numpy.ndarray"
   [a & {:keys [dtype copy] :or {copy false}}]
-  (:data a))
+  (values (if (true? copy) (copy a) a)))

@@ -1,6 +1,7 @@
 (ns bamboo.dataframe
   (:require [taoensso.tufte :as tufte]
-            [bamboo.utility :refer [array-zipmap condas-> in? to-vector]]
+            [bamboo.utility :refer [array-zipmap condas-> in? 
+                                    scalar? to-vector]]
             [bamboo.array :as array]
             [bamboo.index :as index]
             [numcloj.core :as np]
@@ -13,7 +14,10 @@
 (defn- shape [as]
   [(first (:shape (first as))) (count as)])
 
-(defn- index-positions [idx labels] (vals (select-keys (:loc idx) labels)))
+(defn- copy-data [df]
+  (array/array 
+   (map array/copy (ndarray/tolist (array/to-numpy (:data df))))
+   :dtype :dtype/object))
 
 ;;; Constructor
 
@@ -67,7 +71,7 @@
   ([df index-label column-label]
    (let [label-type-fn (fn [label index]
                          (cond
-                           (and (some? label) (not (coll? label))) :label
+                           (scalar? label) :label
                            (and (map? label)
                                 (= :objtype/slice (:objtype label))) :slice
                            (and (sequential? label)
@@ -82,6 +86,7 @@
                             "a list of labels, a slice, a boolean array "
                             "or callable function: " index-label column-label)
                        (:type :ValueError))))
+     
      (let [m (case index-label-type
                :label (vector (index/get-loc (:index df) index-label))
                :labels (map #(index/get-loc (:index df) %) index-label)
@@ -130,27 +135,32 @@
 
      (let [mvals (to-vector (or index (when (= 1 axis) labels)))
            nvals (to-vector (or columns (when (= 0 axis) labels)))
-           m (when (seq mvals) 
-               (remove nil? (map #(index/get-loc (:index df) %) mvals)))
-           n (when (seq nvals) 
-               (remove nil? (map #(index/get-loc (:columns df) %) nvals)))]
-       (when (= errors :raise)
-         (when-not (= (count mvals) (count m))
-           (throw (ex-info (str "Not all index values can be found: " mvals)
-                           {:type :KeyError})))
-         (when-not (= (count nvals) (count n))
-           (throw (ex-info (str "Not all column values can be found: " nvals)
-                           {:type :KeyError}))))
-
-       (dataframe (condas-> (array/to-numpy (:data df)) $
+           index-loc-fn 
+           (fn [index locs] 
+             (when (seq locs)
+               (keep #(let [idx (index/get-loc index %)]
+                        (when (and (nil? idx) (= :raise errors))
+                          (throw (ex-info (str "[" % "] not found in axis")
+                                          {:type :KeyError})))
+                        idx) 
+                     locs)))
+           m (index-loc-fn (:index df) mvals)
+           n (index-loc-fn (:columns df) nvals)
+           index-drop-fn
+           (fn [index locs ilocs]
+             (if (seq ilocs)
+               (index/drop* index locs :errors errors)
+               (if (true? inplace) index (index/copy index))))]
+       
+       (dataframe (condas-> (array/to-numpy (if (true? inplace)
+                                              (:data df)
+                                              (copy-data df))) $
                             (seq m) ((np/vectorize
                                       #(np/delete (array/to-numpy %) m)) $)
                             (seq n) (np/delete $ n))
-                  :index (condas-> (:index df) $
-                                   (seq m) (index/drop* $ mvals))
-                  :columns (condas-> (:columns df) $
-                                     (seq n) (index/drop* $ nvals))
-                  :copy true)))))
+                  :index (index-drop-fn (:index df) mvals m) 
+                  :columns (index-drop-fn (:columns df) nvals n)
+                  :copy false)))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html#pandas.DataFrame.equals
 (defn equals

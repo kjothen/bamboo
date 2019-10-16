@@ -21,7 +21,7 @@
 
 (load-file "src/main/clojure/bamboo/utility.clj")
 (load-file "src/main/clojure/bamboo/array.clj")
-(load-file "src/main/clojure/bamboo/dtype.clj")
+(load-file "src/main/clojure/bamboo/objtype.clj")
 (load-file "src/main/clojure/bamboo/index.clj")
 (load-file "src/main/clojure/bamboo/date_range.clj")
 (load-file "src/main/clojure/bamboo/dataframe.clj")

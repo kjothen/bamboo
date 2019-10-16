@@ -65,7 +65,6 @@
       (pprint/pprint expected)
       (is (equals expected (loc df (take 2 index) (take 2 columns)))))))
     
-
 (deftest drop*-test
   (let [columns obj-index
         index int64-index
@@ -89,7 +88,7 @@
       (pprint/pprint expected)
       (is (equals expected (drop* df (take-last 2 columns))))
       (is (equals expected (drop* df :columns (take-last 2 columns)))))
-
+    
     ;; drop* first row
     (let [expected (dataframe (mapv #(nthrest % 1) vs)
                               :columns columns
@@ -97,7 +96,7 @@
       (pprint/pprint expected)
       (is (equals expected (drop* df (nth index 0) :axis 1)))
       (is (equals expected (drop* df :index (nth index 0)))))
-
+    
     ;; drop last two rows
     (let [m (- (count index) 2)
           expected (dataframe (mapv #(take m %) vs)
@@ -106,7 +105,7 @@
       (pprint/pprint expected)
       (is (equals expected (drop* df (take-last 2 index) :axis 1)))
       (is (equals expected (drop* df :index (take-last 2 index)))))
-
+    
     ;; drop last two columns and last two rows
     (let [m (- (count index) 2)
           n (- (count columns) 2)
@@ -117,12 +116,12 @@
       (is (equals expected (drop* df
                                   :columns (take-last 2 columns)
                                   :index (take-last 2 index)))))
-
+    
     ;; drop under-specified errors
     (let [expected #"^Need to specify at least one of 'labels', 'index' or 'columns'"]
       (is (thrown-with-msg? Exception expected
                             (drop* df))))
-
+    
     ;; drop labels and columns/index errors
     (let [expected #"^Cannot specify both 'labels' and 'index'/'columns'$"]
       (is (thrown-with-msg? Exception expected
@@ -138,15 +137,15 @@
                                    (nthrest vs 1)
                                    :columns (nthrest vs 1)
                                    :index (nthrest vs 1)))))
-
+    
     ;; drop label not found errors
-    (let [expected #"^Not all column values can be found:"]
+    (let [expected #"^\[not-found\] not found in axis"]
       (is (thrown-with-msg? Exception expected
                             (drop* df "not-found")))
       (is (thrown-with-msg? Exception expected
                             (drop* df :columns "not-found"))))
-
-    (let [expected #"^Not all index values can be found:"]
+    
+    (let [expected #"^\[not-found\] not found in axis"]
       (is (thrown-with-msg? Exception expected
                             (drop* df "not-found" :axis 1)))
       (is (thrown-with-msg? Exception expected
@@ -154,7 +153,7 @@
       (is (thrown-with-msg? Exception expected
                             (drop* df :columns "not-found"
                                    :index "not-found"))))
-
+    
     ;; ignore not found errors
     (pprint/pprint df)
     (is (equals df (drop* df "not-found" :errors :ignore)))

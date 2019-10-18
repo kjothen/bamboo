@@ -6,7 +6,8 @@
   (:import (java.time DayOfWeek Duration Instant Period
                       LocalDate LocalDateTime LocalTime
                       ZonedDateTime ZoneId)
-           (java.time.temporal TemporalAdjusters)))
+           (java.time.temporal TemporalAdjusters)
+           (java.util.function UnaryOperator)))
 
 (def default-freq "D")
 (def default-tz "UTC")
@@ -39,53 +40,52 @@
          ; fallback to parsing a datetime
          (parse-datetime dt tz))))
 
-(defn- step [start freq]
+(def ^:private TemporalAdjusterNone (TemporalAdjusters/ofDateAdjuster
+                                     (reify UnaryOperator
+                                       (apply [this arg] arg))))
+
+(defn- step [freq]
   (if-let [[_ amount unit] (re-find #"^(-?\d*)(\w+)" freq)]
     (let [n (if (string/blank? amount) 1 (parse-long amount))]
       (case unit
-        "Y" [(.with start (TemporalAdjusters/lastDayOfYear)) 
-             (java.time.Period/ofYears n)]
-        "M" [(.with start (TemporalAdjusters/lastDayOfMonth))
-             (java.time.Period/ofMonths n)]
-        "W" [(.with start (TemporalAdjusters/next (DayOfWeek/SUNDAY)))
-             (java.time.Period/ofWeeks n)]
-        "D" [start (java.time.Period/ofDays n)]
-        "H" [start (java.time.Duration/ofHours n)]
-        ("T","min") [start (java.time.Duration/ofMinutes n)]
-        "S" [start (java.time.Duration/ofSeconds n)]
-        ("L","ms") [start (java.time.Duration/ofMillis n)]
-        ("U","us") [start (java.time.Duration/ofNanos (* 1000 n))]
-        "N" [start (java.time.Duration/ofNanos n)]
-        [start (java.time.Period/ofDays n)]))
+        "Y" [(java.time.Period/ofYears n) 
+             (TemporalAdjusters/lastDayOfYear)]
+        "M" [(java.time.Period/ofMonths n) 
+             (TemporalAdjusters/lastDayOfMonth)]
+        "W" [(java.time.Period/ofWeeks n) 
+             (TemporalAdjusters/nextOrSame (DayOfWeek/SUNDAY))]
+        "D" [(java.time.Period/ofDays n) TemporalAdjusterNone]
+        "H" [(java.time.Duration/ofHours n) TemporalAdjusterNone]
+        ("T","min") [(java.time.Duration/ofMinutes n) TemporalAdjusterNone]
+        "S" [(java.time.Duration/ofSeconds n) TemporalAdjusterNone]
+        ("L","ms") [(java.time.Duration/ofMillis n) TemporalAdjusterNone]
+        ("U","us") [(java.time.Duration/ofNanos (* 1000 n)) 
+                    TemporalAdjusterNone]
+        "N" [(java.time.Duration/ofNanos n) TemporalAdjusterNone]
+        [(java.time.Period/ofDays n) TemporalAdjusterNone]))
     (throw (ex-info "Invalid freq: " {:freq freq}))))
 
 (defn- forward
   [start freq periods]
-  (let [[adj-start step] (step start (or freq default-freq))]
-    (reduce (fn [m _] (conj m (.plus (last m) step)))
-            [adj-start] (range (dec periods)))))
+  (let [[step adj] (step (or freq default-freq))]
+    (reduce (fn [m _] (conj m (.with (.plus (last m) step) adj)))
+            [(.with start adj)] (range (dec periods)))))
 
 (defn- backward
   [end freq periods]
-  (let [[adj-end step] (step end (or freq default-freq))]
+  (let [[step adj] (step (or freq default-freq))]
     (reverse
-     (reduce (fn [m _] (conj m (.minus (last m) step)))
-             [adj-end] (range (dec periods))))))
+     (reduce (fn [m _] (conj m (.with (.minus (last m) step) adj)))
+             [(.with (.minus end step) adj)] (range (dec periods))))))
 
 (defn- bounded
   [start end freq]
-  (let [[adj-start step] (step start (or freq default-freq))]
-    (if (.isBefore start end)
+  (let [[step adj] (step (or freq default-freq))]
+    (when (.isBefore (.with start adj) end)
       (loop [i 1
-             result [adj-start]]
-        (let [next (.plus adj-start (.multipliedBy step i))]
+             result [(.with start adj)]]
+        (let [next (.with (.plus start (.multipliedBy step i)) adj)]
           (if (or (.isBefore next end) (.isEqual next end))
-            (recur (inc i) (conj result next))
-            result)))
-      (loop [i 1
-             result [adj-start]]
-        (let [next (.plus adj-start (.multipliedBy step i))]
-          (if (or (.isAfter next end) (.isEqual next end))
             (recur (inc i) (conj result next))
             result))))))
 
@@ -148,4 +148,5 @@
     ; return a datetimeindex
     (index/datetimeindex 
      (array/array (map as-datetime64ns data) :dtype :dtype/int64) 
-     tz)))
+     :freq freq 
+     :tz tz)))

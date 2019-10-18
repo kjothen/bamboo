@@ -1,6 +1,7 @@
 (ns bamboo.dataframe
-  (:require [taoensso.tufte :as tufte]
-            [bamboo.utility :refer [array-zipmap condas-> in? 
+  (:require [clojure.string :as string]
+            [taoensso.tufte :as tufte]
+            [bamboo.utility :refer [array-zipmap condas-> in?
                                     scalar? to-vector]]
             [bamboo.array :as array]
             [bamboo.index :as index]
@@ -18,6 +19,9 @@
   (array/array 
    (map array/copy (ndarray/tolist (array/to-numpy (:data df))))
    :dtype :dtype/object))
+
+(def a2n array/to-numpy)
+(def a2l (comp ndarray/tolist array/to-numpy))
 
 ;;; Constructor
 
@@ -64,6 +68,12 @@
   ([df index] (array/array (map #(iat df index %) (range (second (:shape df))))))
   ([df index column] (iat df index column)))
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.at.html
+(defn at
+  "Access a single value for a row/column label pair"
+  [df index column]
+  (iat (index/get-loc (:index df) index) (index/get-loc (:columns df) column)))
+
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.loc.html
 (defn loc
   "Access a group of rows and columns by label (s) or a boolean array"
@@ -105,64 +115,83 @@
                   :index (if (some? mvals) (index/index mvals) (:index df))
                   :columns (if (some? nvals) (index/index nvals) (:columns df))
                   :copy false)))))
-    
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.itertuples.html
+(defn itertuples
+  "Iterate over DataFrame rows as namedtuples"
+  [df & {:keys [index name*] :or {index true name* "Pandas"}}]
+  (let [columns (a2l (index/to-native-types (:columns df)))
+        records (np/rec.fromarrays (map a2n (a2l (:data df))) :names columns)]
+    (a2l (array/array records))))
+
 ;;; Binary operator functions
 ;;; Function application, GroupBy & Window
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.applymap.html
+(defn applymap
+  "This method applies a function that accepts and returns a scalar 
+   to every element of a DataFrame" 
+  [df func & {:keys [otype]}]
+  ; TODO: don't supply otype, taint the first result to derive this
+  (update-in df [:data]
+             (fn [data]
+               (array/array
+                (map #(let [vfunc (np/vectorize 
+                                   func 
+                                   :otypes [(or otype (:dtype %))])
+                            res (vfunc (array/to-numpy %))]
+                        (array/array res))
+                     (a2l data))
+                :dtype :dtype/object))))
+  
+
 ;;; Computations / Descriptive Stats
 ;;; Reindexing / Selection / label manipulation
 
-;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.drop.html#pandas.DataFrame.drop
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.drop.html
 (defn drop*
   "Drop specified labels (or columns and indices) from rows or columns"
   {:arglists '([df labels? & {:keys [index columns axis level inplace errors]
                               :or {axis 0 inplace false errors :raise}}])}
   [df-and-labels & args]
   ; more than one variadic overload - labels are optional
-  (tufte/p
-   :dataframe/dataframe.drop
-   (let [[df labels {:keys [index columns axis level inplace errors]
-                     :or {axis 0 inplace false errors :raise}}]
-         (if (even? (count args))
-           [df-and-labels nil args]
-           [df-and-labels (first args) (rest args)])]
-     (when (every? nil? [labels columns index])
-       (throw (ex-info (str "Need to specify at least one of "
-                            "'labels', 'index' or 'columns'")
-                       {:type :ValueError})))
-     (when (and (some? labels) (not-every? nil? [columns index]))
-       (throw (ex-info "Cannot specify both 'labels' and 'index'/'columns'"
-                       {:type :ValueError})))
+  (let [[df labels {:keys [index columns axis level inplace errors]
+                    :or {axis 0 inplace false errors :raise}}]
+        (if (even? (count args))
+          [df-and-labels nil args]
+          [df-and-labels (first args) (rest args)])]
+    (when (every? nil? [labels columns index])
+      (throw (ex-info (str "Need to specify at least one of "
+                           "'labels', 'index' or 'columns'")
+                      {:type :ValueError})))
+    (when (and (some? labels) (not-every? nil? [columns index]))
+      (throw (ex-info "Cannot specify both 'labels' and 'index'/'columns'"
+                      {:type :ValueError})))
 
-     (let [mvals (to-vector (or index (when (= 1 axis) labels)))
-           nvals (to-vector (or columns (when (= 0 axis) labels)))
-           index-loc-fn 
-           (fn [index locs] 
-             (when (seq locs)
-               (keep #(let [idx (index/get-loc index %)]
-                        (when (and (nil? idx) (= :raise errors))
-                          (throw (ex-info (str "[" % "] not found in axis")
-                                          {:type :KeyError})))
-                        idx) 
-                     locs)))
-           m (index-loc-fn (:index df) mvals)
-           n (index-loc-fn (:columns df) nvals)
-           index-drop-fn
-           (fn [index locs ilocs]
-             (if (seq ilocs)
-               (index/drop* index locs :errors errors)
-               (if (true? inplace) index (index/copy index))))]
-       
-       (dataframe (condas-> (array/to-numpy (if (true? inplace)
-                                              (:data df)
-                                              (copy-data df))) $
-                            (seq m) ((np/vectorize
-                                      #(np/delete (array/to-numpy %) m)) $)
-                            (seq n) (np/delete $ n))
-                  :index (index-drop-fn (:index df) mvals m) 
-                  :columns (index-drop-fn (:columns df) nvals n)
-                  :copy false)))))
+    (let [mvals (to-vector (or index (when (= 1 axis) labels)))
+          nvals (to-vector (or columns (when (= 0 axis) labels)))
+          index-loc-fn (fn [index locs]
+                         (when (seq locs)
+                           (keep #(index/get-loc index % :errors errors)
+                                 locs)))
+          m (index-loc-fn (:index df) mvals)
+          n (index-loc-fn (:columns df) nvals)
+          index-drop-fn (fn [index locs ilocs]
+                          (if (seq ilocs)
+                            (index/drop* index locs :errors errors)
+                            (if (true? inplace) index (index/copy index))))]
 
-;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html#pandas.DataFrame.equals
+      (dataframe (condas-> (array/to-numpy (if (true? inplace)
+                                             (:data df)
+                                             (copy-data df))) $
+                           (seq m) ((np/vectorize
+                                     #(np/delete (array/to-numpy %) m)) $)
+                           (seq n) (np/delete $ n))
+                 :index (index-drop-fn (:index df) mvals m)
+                 :columns (index-drop-fn (:columns df) nvals n)
+                 :copy false))))
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html
 (defn equals
   "Test whether two objects contain the same elements"
   [df other]
@@ -179,7 +208,7 @@
 ;;; Missing data handling
 ;;; Reshaping, sorting, transposing
 
-;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.transpose.html#pandas.DataFrame.transpose
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.transpose.html
 (defn transpose* 
   "Transpose index and columns"
   [df & {:keys [copy] :or {copy false}}]
@@ -223,3 +252,28 @@
 ;;; Time series-related
 ;;; Plotting
 ;;; Serialization / IO / Conversion
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_string.html#pandas.DataFrame.to_string
+(defn to-string
+  [df & {:keys [columns col-space header index
+                na-rep formatters float-format sparsify index-names justify
+                max-rows max-cols show-dimensions decimal line-width]
+         :or {show-dimensions false decimal \.}}]
+  (let [columns-df (if (some? columns) (take* $ :columns columns) df)
+        strings-df (applymap columns-df str :otype :dtype/object)
+        _columns (a2l (index/array (:columns strings-df)))
+        widths (as-> strings-df $
+                 (applymap $ count)
+                 (map #(long (np/amax (a2n %)))
+                      (a2l (:data $)))
+                 (map-indexed #(max (count (nth _columns %1)) %2) $))
+        records (itertuples strings-df)
+        linefn (fn [coll] (string/join 
+                           " "
+                           (map-indexed
+                            #(format (str "%-" (nth widths %1) "s") %2)
+                            coll)))
+        headers (linefn _columns)
+        body (map (comp linefn vals) records)]
+    (str headers "\n" (string/join "\n" body))))
+  

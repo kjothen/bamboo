@@ -3,9 +3,7 @@
             [bamboo.dataframe :refer [dataframe drop* equals loc sort-values]]
             [bamboo.index :as index]
             [bamboo.pprint :as pprint]
-            [numcloj.core :as np]
-            [numcloj.ndarray :as ndarray])
-  (:import (java.util Arrays)))
+            [numcloj.core :as np]))
 
 (def vs [[false true false true false]
          [99.0 -42.0 0.0 Double/NaN 16.66]
@@ -26,10 +24,8 @@
     
     ;; expected shape, columns and index 
     (is (= [(count index) (count columns)] (:shape df)))
-    (is (Arrays/equals (object-array columns)
-                       (ndarray/tolist (index/to-numpy (:columns df)))))
-    (is (Arrays/equals (long-array index) 
-                       (ndarray/tolist (index/to-numpy (:index df)))))))
+    (is (np/array-equal columns (index/to-numpy (:columns df))))
+    (is (np/array-equal index (index/to-numpy (:index df))))))
 
 (deftest loc-test
   (let [columns obj-index

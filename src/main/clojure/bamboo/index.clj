@@ -2,31 +2,27 @@
   (:require [bamboo.array :as array]
             [bamboo.objtype :as objtype]
             [bamboo.utility :refer [in? to-vector]]
-            [lang.core :refer [ndarray-expr]]
             [numcloj.core :as np]
-            [numcloj.ndarray :as nd]))
+            [numcloj.ndarray :as ndarray])
+  (:import (java.time DayOfWeek Duration Instant Period
+                      LocalDate LocalDateTime LocalTime
+                      ZonedDateTime ZoneId)
+           (java.time.temporal TemporalAdjusters)
+           (java.time.format DateTimeFormatter)))
 
 ;;;; https://pandas.pydata.org/pandas-docs/stable/reference/indexing.html
 
-(declare to-numpy)
+(declare copy)
 (declare get-loc)
+(declare to-numpy)
 
-(defn- index?
-  "Return true if this is any type of index"
-  [a]
-  (and (map? a) (isa? objtype/bamboo-hierarchy (:objtype a) :objtype/index)))
-
-(defn- copy-index
-  "Copy an index (if it has data)"
-  [idx]
-  (if (some? (:data idx))
-    (update-in idx [:data] array/array :copy true)
-    idx))
+(defn- any-index? [a] (isa? objtype/bamboo-hierarchy (:objtype a) :objtype/index))
+(defn- datetimeindex? [a] (= :objtype/datetimeindex (:objtype a)))
 
 (defn- hash-array
   "Hash an arrray"
   [a]
-  (zipmap (nd/tolist (array/to-numpy a :copy false)) 
+  (zipmap (ndarray/tolist (array/to-numpy a :copy false)) 
           (range (first (:shape a)))))
 
 ;;; Index
@@ -35,8 +31,8 @@
    The basic object storing axis labels for all pandas objects"
   [data & {:keys [dtype copy name* tupleize-cols]
            :or {copy false tupleizecols true}}]
-  (if (index? data)
-    (if (true? copy) (copy-index data) data)
+  (if (any-index? data)
+    (if (true? copy) (copy data) data)
     (let [a (array/array data :dtype dtype :copy copy)]
       (merge {:objtype :objtype/index
               :data a
@@ -46,60 +42,111 @@
                              :size :nbytes])))))
   
 ;; Properties
-(defn T
-  "Return the transpose, which is by defintion self"
-  [idx]
-  idx)
 
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.array.html
 (defmulti array
   "The ExtensionArray of the data backing this Series or Index"
   :objtype)
 (defmethod array :default [idx] (:data idx))
-(defmethod array :objtype/rangeindex [idx] 
+(defmethod array :objtype/rangeindex 
+  [idx]
   (array/array (range (:start idx) (:stop idx) (:step idx))))
 
-(defn to-numpy
-  "A NumCloj ndarray representing the values in this Series or Index"
-  [idx & {:keys [copy] :or {copy false}}]
-  (array/to-numpy (array idx)))
-
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.dtype.html
 (defmulti dtype
   "Return the dtype object of the underlying data"
   :objtype)
 (defmethod dtype :default [idx] (:dtype idx))
 (defmethod dtype :objtype/rangeindex [idx] :dtype/int64)
 
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.T.html
+(defn T
+  "Return the transpose, which is by defintion self"
+  [idx] idx)
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.to_native_types.html
+(defmulti to-native-types
+  "Format specified values of self and return them"
+  :objtype)
+
+(defmethod to-native-types :default 
+  [idx] 
+  (array/array (map str (ndarray/tolist (to-numpy idx))) :dtype :dtype/object))
+
+(defmethod to-native-types :objtype/datetimeindex
+  [idx]
+  (let [formats
+        {:d (DateTimeFormatter/ofPattern "yyyy-MM-dd")
+         :dt (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss")
+         :ms (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+         :ns (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnn")}
+        nanos-in-seconds (long 1000000000)
+        nanos-in-millis (long 1000000)
+        to-datetime #(.atZone
+                      (Instant/ofEpochSecond (quot % nanos-in-seconds)
+                                             (rem % nanos-in-seconds))
+                      (ZoneId/of "UTC"))
+        format-ks (reduce #(let [zdt (to-datetime %2)
+                                 hours? (pos? (.getHour zdt))
+                                 minutes? (pos? (.getMinute zdt))
+                                 seconds? (pos? (.getSecond zdt))
+                                 millis? (pos? (quot (.getNano zdt)
+                                                     nanos-in-millis))
+                                 nanos? (pos? (rem (.getNano zdt)
+                                                   nanos-in-millis))]
+                             (cond
+                               nanos? (conj %1 :ns)
+                               millis? (conj %1 :ms)
+                               (or hours? minutes? seconds?) (conj %1 :dt)
+                               :else (conj %1 :d)))
+                          #{}
+                          (ndarray/tolist (to-numpy idx)))
+        formatter (cond
+                    (contains? format-ks :ns) (:ns formats)
+                    (contains? format-ks :ms) (:ms formats)
+                    (contains? format-ks :dt) (:dt formats)
+                    :else (:d formats))]
+    (array/array
+     (map #(.format (to-datetime %) formatter) (ndarray/tolist (to-numpy idx)))
+     :dtype :dtype/object)))
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.to_numpy.html
+(defn to-numpy
+  "A NumCloj ndarray representing the values in this Series or Index"
+  [idx & {:keys [copy] :or {copy false}}]
+  (array/to-numpy (array idx)))
+
 ;; Modifying and computations
 
-;https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.copy.html#pandas.Index.copy
+;https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.copy.html
 (defmulti copy
   "Make a copy of this object"
   :objtype)
+
 (defmethod copy :default
   [idx & {:keys [name* deep dtype]
           :or {deep true}}]
-  (copy-index idx))
+  (if (some? (:data idx))
+    (update-in idx [:data] array/array :copy true)
+    idx))
 
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.drop.html
 (defmulti drop*
   "Make new Index with passed list of labels deleted"
-  (fn [idx labels & {:keys [errors] :or {errors :raise}}]
-    (:objtype idx)))
-(defmethod drop* :default 
-  [idx labels & {:keys [errors] :or {errors :raise}}] 
+  (fn [idx labels & {:keys [errors] :or {errors :raise}}] (:objtype idx)))
+
+(defmethod drop* :default
+  [idx labels & {:keys [errors] :or {errors :raise}}]
   (let [a (to-numpy idx)
-        _labels (to-vector labels)
-        indices (mapv #(get-loc idx %) _labels)]
-    (if (and (= :raise errors) (not= (count _labels) (count indices)))
-      (throw (ex-info "Not all labels could be found" 
-                      {:type :KeyError :labels _labels}))
-      (index (np/delete a indices)))))
+        indices (keep #(get-loc idx % :errors errors) (to-vector labels))]
+    (index (np/delete a indices))))
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.equals.html
 (defmulti equals
   "Determine if two Index objects contain the same elements"
   :objtype)
+
 (defmethod equals :default
   [idx other]
   (np/array-equal (to-numpy idx) (to-numpy other)))
@@ -107,6 +154,8 @@
 ;; Compatibility with MultiIndex
 ;; Missing values
 ;; Conversion
+(defn to-list [idx] ((comp ndarray/tolist array/to-numpy to-native-types) idx))
+
 ;; Sorting
 ;; Time-specific operations
 ;; Combining / joining / set operations
@@ -115,14 +164,21 @@
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.get_loc.html#pandas.Index.get_loc
 (defmulti get-loc
   "Get integer location, slice or boolean mask for requested label"
-  :objtype)
-(defmethod get-loc :default 
-  [idx label & {:keys [method tolerance]}]
-  (get (:loc idx) label))
+  (fn [idx label & {:keys [errors method tolerance]}] (:objtype idx)))
+
+(defmethod get-loc :default
+  [idx label & {:keys [errors method tolerance]}]
+  (let [i (get (:loc idx) label)]
+    (when (and (nil? i) (= :raise errors))
+      (throw (ex-info (str "[" label "] not found in axis")
+                      {:type :KeyError})))
+    i))
+
 (defmethod get-loc :objtype/rangeindex
   [idx label & {:keys [method tolerance]}]
   ; TODO - deal with stepped/negative/non-zero starting indices..
   label)
+
 ;;; Numeric Index
 
 ;; RangeIndex
@@ -142,135 +198,25 @@
   "Immutable ndarray of datetime64 data, represented internally as int64, 
    and which can be boxed to Timestamp objects that are subclasses of 
    datetime and carry metadata such as frequency information."
-  [data & {:keys [copy freq tz ambiguous name dayfirst yearfirst]
+  [data & {:keys [copy freq tz ambiguous name* dayfirst yearfirst]
            :or {copy false ambiguous :raise dayfirst false yearfirst false}}]
-  (if (index? data)
-    (if (true? copy) (copy-index data) data)
+  (if (datetimeindex? data)
+    (if (true? copy) 
+      (datetimeindex (array/copy (array data))
+                     :copy false 
+                     :freq freq
+                     :tz tz 
+                     :ambiguous ambiguous 
+                     :name* name*
+                     :dayfirst dayfirst 
+                     :yearfirst yearfirst)
+      data)
     (let [a (array/array data :dtype :dtype/int64 :copy copy)]
       (merge {:objtype :objtype/datetimeindex
               :data a
               :loc (hash-array a)
+              :name* name*
               :freq freq
               :tz tz}
              (select-keys a [:shape :ndim
                              :size :nbytes])))))
-
-
-; (defmulti hasnans
-;   "Return if I have any nans; enables various perf speedups"
-;   :dtype)
-; (defmethod dtype :default [idx] false)
-; (defmethod dtype :dtype/float64index [idx] 
-;   (array/any (array/isnan (:data idx))))
-
-; (defn inferred-type
-;   "Return a string of the type inferred from the values"
-;   [idx]
-;   (clojure-name (dtype index)))
-
-; (defmulti is-monotonic-increasing
-;   "Return if the index is monotonic increasing 
-;   (only equal or increasing) values"
-;   :dtype)
-; (defmethod is-monotonic-increasing :default [idx] 
-;   (apply <= (array idx)))
-; (defmethod is-monotonic-increasing :dtype/rangeindex [idx] true)
-
-; (defmulti is-monotonic-decreasing
-;   "Return if the index is monotonic decreasing (only equal or decreasing) values"
-;   :dtype)
-; (defmethod is-monotonic-decreasing :default [idx] 
-;   (apply >= (array idx)))
-; (defmethod is-monotonic-decreasing :dtype/rangeindex [idx] false)
-
-; (defn is-monotonic
-;   "Alias for is_monotonic_increasing."
-;   [idx] (is-monotonic-increasing idx))
-
-; (defmulti is-unique
-;   "Return if the index has unique values."
-;   :dtype)
-; (defmethod is-unique :default [idx] (apply distinct? (array idx)))
-; (defmethod is-unique :dtype/rangeindex [idx] true)
-
-; (defn nbytes
-;   "Return the number of bytes in the underlying data"
-;   [idx]
-;   (-> idx (get :array) (get :nbytes)))
-
-; (defn shape
-;   "Return a tuple of the shape of the underlying data"
-;   [idx]
-;   (-> idx (get :array) (get :shape)))
-
-; (defn ndim
-;   "Number of dimensions of the underlying data, by definition 1"
-;   [idx]
-;   (-> idx (get :array) (get :ndim)))
-
-; (defn size
-;   "Return the number of elements in the underlying data"
-;   [idx]
-;   (-> idx (get :array) (get :size)))
-
-; (defn empty [idx] (zero? (size idx)))
-
-; (defmulti has-duplicates :index-type)
-; (defmethod has-duplicates :default [idx] (not (is-unique idx)))
-; (defmethod has-duplicates :index-type/range [idx] false)
-
-; (defmulti is-all-dates :index-type)
-; (defmethod is-all-dates :default [idx] false)
-; (defmethod is-all-dates :index-type/datetime64-ns [idx] true)
-
-; (defn name [idx] (:name idx))
-; (defn names [idx] (list (name idx)))
-
-; ;;; Post-Construction "Attributes"
-; (defn T [idx] idx)
-; (defn values [idx] (:array idx))
-
-; ;;;
-; ;;; Methods
-; (defmethod all
-;   "Return whether all elements are True"
-;   :index-type)
-; (defmulti all :default [idx] 
-;   (throw (ex-info (str "cannot perform all with this index type: " 
-;                        (:index-type idx)) {:type :TypeError})))
-; (defmulti all :index-type/bool [idx] (array/all (:array idx)))
-; (defmulti all :index-type/datetime64ns [idx] true)
-; (defmulti all :index-type/int64 [idx] (array/all (:array idx)))
-; (defmulti all :index-type/object [idx] (some? (array/all (:array idx))))
-; (defmulti all :index-type/range [idx] true)
-
-; (defmethod any
-;   "Return whether any element is True"
-;   :index-type)
-; (defmulti all :default [idx]
-;   (throw (ex-info (str "cannot perform any with this index type: "
-;                        (:index-type idx)) {:type :TypeError})))
-; (defmulti any :index-type/bool [idx] (array/any (:array idx)))
-; (defmulti any :index-type/datetime64ns [idx] true)
-; (defmulti any :index-type/int64 [idx] (array/any (:array idx)))
-; (defmulti any :index-type/object [idx] (some? (array/any (:array idx))))
-; (defmulti any :index-type/range [idx] true)
-
-; (defmethod argmax
-;   "Return ~~an ndarray of~~ the maximum argument indexer"
-;   [idx]
-;   (array/argmax (:array idx)))
-
-; (defmethod argmin
-;   "Return ~~an ndarray of~~ the minimum argument indexer"
-;   [idx]
-;   (array/argmin (:array idx)))
-
-; (defmethod argsort
-;   "Return the integer indices that would sort the index"
-;   [idx]
-;   (array/argsort (:array idx)))
-
-; ;; Indices
-; (defn from-sequential [vs & {:keys [dtype copy name tupleize-cols]}])
-

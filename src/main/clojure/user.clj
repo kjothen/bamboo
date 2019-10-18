@@ -17,6 +17,7 @@
 (load-file "src/main/clojure/numcloj/api/logic/comparison.clj")
 (load-file "src/main/clojure/numcloj/api/logic/truth.clj")
 (load-file "src/main/clojure/numcloj/api/searching.clj")
+(load-file "src/main/clojure/numcloj/api/statistics.clj")
 (load-file "src/main/clojure/numcloj/core.clj")
 
 (load-file "src/main/clojure/bamboo/utility.clj")

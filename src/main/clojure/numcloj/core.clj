@@ -5,6 +5,7 @@
             [numcloj.api.logic.comparison :as logic.comparison]
             [numcloj.api.logic.truth :as logic.truth]
             [numcloj.api.searching :as searching]
+            [numcloj.api.statistics :as statistics]
             [numcloj.array-buffer :as b]
             [numcloj.array-creation :as array-creation]
             [numcloj.functional :as functional]
@@ -109,5 +110,7 @@
 (def count-nonzero counting/count-nonzero)
 
 ;;; Statistics
+(def amax statistics/amax)
+
 ;;; Test Support (numpy.testing)
 ;;; Window functions

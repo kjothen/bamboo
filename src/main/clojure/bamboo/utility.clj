@@ -13,6 +13,7 @@
 
 (defn nan? [x] (and (number? x) (Double/isNaN x)))
 (defn not-nan? [x] (not (nan? x)))
+(defn scalar? [x] ((some-fn int? double? boolean? string?) x))
 
 (defn parse-long [s]
   (tufte/p

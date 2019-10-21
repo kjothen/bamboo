@@ -5,8 +5,9 @@
             [bamboo.array :as array]
             [bamboo.dataframe :as dataframe]
             [bamboo.index :as index]
-            [bamboo.pprint :as pprint]
             [numcloj.core :as np]))
+
+(defn print-df [df] (do (println) (println (dataframe/to-string df))))
 
 (deftest header-tests
   (testing (str "Given CSV files with headers on zeroth row, nth row "
@@ -24,12 +25,12 @@
                                   :prefix "X")
           expected-prefix (mapv str (repeat "X")
                                 (range (second (:shape df-prefix))))]
-      (pprint/pprint df-zero)
-      (pprint/pprint df-one)
+      (print-df df-zero)
+      (print-df df-one)
       (is (dataframe/equals df-zero df-one))
-      (pprint/pprint df-none)
+      (print-df df-none)
       (is (dataframe/equals df-zero df-none))
-      (pprint/pprint df-prefix)
+      (print-df df-prefix)
       (is (np/array-equal expected-prefix 
                           (index/to-numpy (:columns df-prefix)))))))
 
@@ -45,9 +46,9 @@
                     :dtype/float64 :dtype/object :dtype/object]
           expected-bool [:dtype/bool :dtype/int64
                          :dtype/float64 :dtype/object :dtype/bool]]
-      (pprint/pprint df)
+      (print-df df)
       (is (np/array-equal expected (array/to-numpy (:dtypes df))))
-      (pprint/pprint df-bool)
+      (print-df df-bool)
       (is (np/array-equal expected-bool (array/to-numpy (:dtypes df-bool)))))))
 
 (deftest na-tests
@@ -63,11 +64,11 @@
                                 [:dtype/object]))
           expected-nil (vec (concat (repeat 17 :dtype/float64)))
           expected-obj (vec (concat (repeat 17 :dtype/object)))]
-      (pprint/pprint df)
+      (print-df df)
       (is (np/array-equal expected (array/to-numpy (:dtypes df))))
-      (pprint/pprint df-nil)
+      (print-df df-nil)
       (is (np/array-equal expected-nil (array/to-numpy (:dtypes df-nil))))
-      (pprint/pprint df-obj)
+      (print-df df-obj)
       (is (np/array-equal expected-obj (array/to-numpy (:dtypes df-obj)))))))
 
 (deftest skip-limit-tests
@@ -84,23 +85,23 @@
                                   f :header 1 :skipinitialspace true)
         df-skipfooter (csv/read-csv f :header 1 :skipfooter 1)]
 
-    (pprint/pprint df)
+    (print-df df)
     (is (= [5 4] (:shape df)))
-    (pprint/pprint df-comment)
+    (print-df df-comment)
     (is (dataframe/equals (dataframe/drop* df :columns ["c" "d"]) 
                           (dataframe/drop* df-comment :columns ["c" "d"])))
-    (pprint/pprint df-skiprows)
+    (print-df df-skiprows)
     (is (dataframe/equals df df-skiprows))
-    (pprint/pprint df-skipblanklines-false)
+    (print-df df-skipblanklines-false)
     (is (= [6 4] (:shape df-skipblanklines-false)))
     (is (= " True" (dataframe/iat df 4 2)))
-    (pprint/pprint df-skipinitialspace-true)
+    (print-df df-skipinitialspace-true)
     (is (true? (dataframe/iat df-skipinitialspace-true 4 2)))
-    (pprint/pprint df-skipfooter)
+    (print-df df-skipfooter)
     (is (= [4 4] (:shape df-skipfooter)))))
 
 (deftest usecols-tests
   (let [df (csv/read-csv (io/resource "bamboo/csv/usecols.csv")
                          :usecols [0 1])]
-    (pprint/pprint df)
+    (print-df df)
     (is (= [3 2] (:shape df)))))

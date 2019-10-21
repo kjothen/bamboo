@@ -41,7 +41,7 @@
 
 (defn reduce*
   [f data init]
-  (areduce (:data data) idx ret init (+ ret (f (get* (:data data) idx)))))
+  (areduce (:data data) idx ret init (f ret (get* (:data data) idx))))
 
 (defn- type-hint-array-fn
   "Provide type hinting to higher-performance expressions"

@@ -31,8 +31,9 @@
      :itemsize (_itemsize data)
      :strides (or strides (_strides data))
      :nbytes (_nbytes data)
-     :flags {:writebackifcopy false :updateifcopy false
-             :aligned false :writeable true}}))
+    ;  :flags {:writebackifcopy false :updateifcopy false
+    ;          :aligned false :writeable true}
+     }))
 
 (defn ndarray? [a]
   (and (map? a) (isa? dtype/numcloj-hierarchy (:dtype a) :dtype/numcloj)))
@@ -61,7 +62,7 @@
                                      (asarray (b/array dtype size)))))
     (ndarray? a) a
     (sequential? a) (asclojurearray (vec a))
-    :else (throw (ex-info (str "Cannot create ndarray from: " (type a))
+    :else (throw (ex-info (str "Cannot create ndarray from: " (type a) " " a)
                           {:type :ValueError}))))
 
 (defmethod asarray (Class/forName "[Z") [a] 
@@ -77,15 +78,15 @@
 (defmethod asarray java.lang.Long [a] (asclojurearray (vector a)))
 (defmethod asarray java.lang.String [a] (asclojurearray (vector a)))
 
+(declare copy)
+
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array
 (defn array
   "Create an array"
   [a & {:keys [dtype copy order subok ndmin]}]
-  (if (ndarray? a)
-    (if copy 
-      (conversion/copy a :order order) 
-      a)
-    (asarray a)))
+  (cond
+    (ndarray? a) (if copy (conversion/copy a :order order) a)
+    :else (asarray a)))
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.copy.html#numpy.copy
 (defn copy

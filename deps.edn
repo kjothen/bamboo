@@ -21,17 +21,21 @@
   {:extra-deps {jonase/eastwood {:mvn/version "RELEASE"}}
    :main-opts ["-m" "eastwood.lint" {:source-paths ["src/main/clojure"]
                                      :test-paths_ ["src/test/clojure"]}]}
-  :kibit {:extra-deps {org.clojure/tools.reader {:mvn/version "1.3.2"}
-                       tvaughan/kibit-runner {:mvn/version "0.1.0"}}
-          :main-opts ["-m" "kibit-runner.cmdline"]}
-  :bench {:extra-deps {criterium {:mvn/version "RELEASE"}}}
-  :cloverage {:extra-paths ["src/test/clojure" "src/test/resources"]
-              :extra-deps {cloverage {:mvn/version "RELEASE"}}
-              :main-opts ["-m" "cloverage.coverage"
-                          "-p" "src/main/clojure"
-                          "-s" "src/test/clojure"]}
+  :kibit 
+  {:extra-deps {org.clojure/tools.reader {:mvn/version "1.3.2"}
+                tvaughan/kibit-runner {:mvn/version "0.1.0"}}
+   :main-opts ["-m" "kibit-runner.cmdline"]}
+  :bench 
+  {:extra-deps {criterium {:mvn/version "RELEASE"}}}
+  :cloverage 
+  {:extra-paths ["src/test/clojure" "src/test/resources"]
+   :extra-deps {cloverage {:mvn/version "RELEASE"}}
+   :main-opts ["-m" "cloverage.coverage"
+               "-p" "src/main/clojure"
+               "-s" "src/test/clojure"]}
   :jar
   {:extra-deps {seancorfield/depstar {:mvn/version "RELEASE"}}
    :main-opts ["-m" "hf.depstar.jar"]}
-  :rebel {:extra-deps {com.bhauman/rebel-readline {:mvn/version "0.1.4"}}
-          :main-opts  ["-m" "rebel-readline.main"]}}}
+  :rebel 
+  {:extra-deps {com.bhauman/rebel-readline {:mvn/version "0.1.4"}}
+   :main-opts  ["-m" "rebel-readline.main"]}}}

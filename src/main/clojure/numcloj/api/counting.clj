@@ -7,7 +7,7 @@
   [a & {:keys [axis]}]
   (let [_a (asarray a)
         f (if (= :dtype/bool (:dtype _a))
-            #(if (false? %) 0 1)
-            #(if (zero? %) 0 1))]
+            #(if (false? %2) %1 (inc %1))
+            #(if (zero? %2) %1 (inc %1)))]
     (b/reduce* f _a (long 0))))
 

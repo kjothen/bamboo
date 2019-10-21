@@ -1,63 +1,80 @@
 (ns bamboo.array
-  (:require [taoensso.tufte :as tufte]
-            [numcloj.core :as np]
-            [numcloj.ndarray :as ndarray]))
+  (:require [numcloj.core :as np]
+            [numcloj.ndarray :as ndarray]
+            [bamboo.utility :refer [in?]]))
+
+;;;; An extension array for ndarrays
 
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.html
-;;;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.api.extensions.ExtensionArray.html#pandas.api.extensions.ExtensionArray
+;;;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.api.extensions.ExtensionArray.html
 
+(declare copy)
 (declare to-numpy)
 
-(defn- asarray
-  "Convert the input to an array using numcloj"
+(defn array? [a] (= :objtype/extension-array (:objtype a)))
+(defn ndarray? [a]
+  (in? (:dtype a) #{:dtype/bool :dtype/float64 :dtype/int64 :dtype/object}))
+
+(defn- from-numpy [a]
+  {:objtype :objtype/extension-array
+   :dtype :dtype/bamboo
+   :nbytes (:nbytes a)
+   :ndim 1
+   :shape [(:size a) nil]
+   :data a})
+
+;;; Interface
+
+(defn from-sequence
   [data & {:keys [dtype copy] :or {copy true}}]
-  (let [a (np/array data :dtype dtype :copy copy)]
-    (merge {:dtype :dtype/array
-            :data a}
-           (select-keys a [:nbytes :shape :ndim]))))
+  (let [a (np/array data :dtype dtype)]
+    (from-numpy a)))
 
-(defn- array? 
-  "Return true if this is a bamboo array"
-  [a] 
-  (and (map? a) (= (:dtype a) :dtype/array)))
+(defn iter [a] (ndarray/tolist (to-numpy a)))
+(defn item [a i] (ndarray/item (to-numpy a) i))
 
+;;; Constructor
+  
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.array.html
-(defn array 
+(defn array
   "Create an array"
-  [data & {:keys [dtype copy] :or {copy true}}]
-  (tufte/p
-   :bamboo/array.array
-   (if (array? data)
-     (if copy 
-       (array (np/array (:data data) :dtype dtype :copy true)) 
-       data)
-     (asarray data :dtype dtype :copy copy))))
+  [values & {:keys [copy] :or {copy true}}]
+  (cond
+    (array? values) (if copy (bamboo.array/copy values) values)
+    (ndarray? values) (let [a (if copy (np/copy values) values)]
+                        (from-numpy a))
+    :else (from-sequence values :copy copy)))
 
 ;;; Attributes
 (defn values [a] (:data a))
 
 ;;; Methods
 
-;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.argsort.html#pandas.arrays.PandasArray.argsort
+;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.argsort.html
 (defn argsort
   "Return the indices that would sort this array" 
   [a & {:keys [ascending kind]
         :or {ascending true}}]
-  (asarray (np/argsort (:data a))))
+  (array (np/argsort (to-numpy a)) :copy false))
+
+;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.copy.html#pandas.arrays.PandasArray.copy
+(defn copy
+  "Return a copy of the array"
+  [a & {:keys [deep] :or {deep true}}]
+  (array (np/copy (to-numpy a)) :copy false))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.take.html
 (defn take*
   "Take elements from an array"
   [a indices & {:keys [allow-fill fill-value]
                 :or {allow-fill false}}]
-  (if (array? indices)
-    (array (np/take* (to-numpy a) (to-numpy indices)))
-    (if (sequential? indices)
-      (array (np/take* (to-numpy a) indices))
-      (array [(ndarray/item (to-numpy a) indices)]))))
+  (if (int? indices)
+    (array [(item a indices)])
+    (let [_indices (ndarray/tolist (to-numpy (array indices :copy false)))]
+      (array (np/take* (to-numpy a) _indices)))))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.to_numpy.html
 (defn to-numpy
   "Convert the PandasArray to a numpy.ndarray"
   [a & {:keys [dtype copy] :or {copy false}}]
-  (:data a))
+  (values (if copy (copy a) a)))

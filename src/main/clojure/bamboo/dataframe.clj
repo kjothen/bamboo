@@ -1,5 +1,7 @@
 (ns bamboo.dataframe
-  (:require [clojure.string :as string]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.pprint :as pprint]
+            [clojure.string :as string]
             [taoensso.tufte :as tufte]
             [bamboo.utility :refer [array-zipmap condas-> in?
                                     scalar? to-vector]]
@@ -8,20 +10,26 @@
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]))
 
-(def ^:dynamic *head-rows* 5)
-
 ;;;; https://pandas.pydata.org/pandas-docs/stable/reference/frame.html
-
-(defn- shape [as]
-  [(first (:shape (first as))) (count as)])
-
-(defn- copy-data [df]
-  (array/array 
-   (map array/copy (ndarray/tolist (array/to-numpy (:data df))))
-   :dtype :dtype/object))
 
 (def a2n array/to-numpy)
 (def a2l (comp ndarray/tolist array/to-numpy))
+
+(defn- copy-data [df]
+  (array/array 
+   (mapv array/copy (array/iter (:data df))) 
+   :dtype :dtype/object :copy false))
+
+(defn- asarrays 
+  [data & {:keys [copy] :or {copy false}}]
+  (array/array
+   (cond
+     (array/ndarray? data) (mapv #(array/array % :copy copy)
+                                 (ndarray/tolist data))
+     (array/array? data) (mapv #(array/array % :copy copy)
+                               (array/iter data))
+     :else (mapv #(array/array % :copy copy) data))
+   :dtype :dtype/object :copy false))
 
 ;;; Constructor
 
@@ -30,18 +38,17 @@
   "Two-dimensional size-mutable, potentially heterogeneous tabular data 
    structure with labeled axes (rows and columns). Arithmetic operations 
    align on both row and column labels. Can be thought of as a dict-like 
-   container for Series objects. The primary bamboo data structure."
+   container for Series objects. The primary pandas data structure."
   [data & {:keys [index columns dtype copy]
            :or {copy false}}]
   (tufte/p
    :bamboo/dataframe.dataframe
-   (let [arrays (mapv #(array/array % :dtype dtype :copy copy)
-                      (if (ndarray/ndarray? data) (ndarray/tolist data) data))
-         shape (shape arrays)]
-     {:dtype :dtype/dataframe
-      :dtypes (array/array (map #(:dtype (array/to-numpy %)) arrays) 
+   (let [arrays (asarrays data :copy copy)
+         shape [(first (:shape (array/item arrays 0))) (first (:shape arrays))]]
+     {:objtype :objtype/dataframe
+      :data arrays
+      :dtypes (array/array (map #(:dtype (a2n %)) (array/iter arrays))
                            :dtype :dtype/object)
-      :data (array/array arrays :dtype :dtype/object :copy false)
       :index (if (some? index)
                (index/index index :copy copy)
                (index/rangeindex (first shape)))
@@ -54,25 +61,26 @@
 ;;; Conversion
 
 ;;; Indexing, iteration
-(defn- nth* [a n] (ndarray/item (array/to-numpy a) n))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iat.html  
 (defn iat
   "Access a single value for a row/column pair by integer position"
   [df index column]
-  (tufte/p :dataframe/iat (nth* (nth* (:data df) column) index)))
+  (array/item (array/item (:data df) column) index))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iloc.html
 (defn iloc
   "Purely integer-location based indexing for selection by position"
-  ([df index] (array/array (map #(iat df index %) (range (second (:shape df))))))
+  ([df index] (array/array (map #(iat df index %) 
+                                (range (second (:shape df))))))
   ([df index column] (iat df index column)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.at.html
 (defn at
   "Access a single value for a row/column label pair"
   [df index column]
-  (iat (index/get-loc (:index df) index) (index/get-loc (:columns df) column)))
+  (iat (index/get-loc (:index df) index) 
+       (index/get-loc (:columns df) column)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.loc.html
 (defn loc
@@ -109,8 +117,7 @@
            nvals (when (some? n) (array/take* (index/array (:columns df)) n))
            data (condas-> (:data df) $
                           (some? n) (array/take* $ n)
-                          (some? m) (map #(array/take* % m)
-                                         (ndarray/tolist (array/to-numpy $))))]
+                          (some? m) (map #(array/take* % m) (array/iter $)))]
        (dataframe data
                   :index (if (some? mvals) (index/index mvals) (:index df))
                   :columns (if (some? nvals) (index/index nvals) (:columns df))
@@ -120,9 +127,11 @@
 (defn itertuples
   "Iterate over DataFrame rows as namedtuples"
   [df & {:keys [index name*] :or {index true name* "Pandas"}}]
-  (let [columns (a2l (index/to-native-types (:columns df)))
-        records (np/rec.fromarrays (map a2n (a2l (:data df))) :names columns)]
-    (a2l (array/array records))))
+  (let [columns (index/to-native-types (:columns df))
+        records (np/rec.fromarrays 
+                 (mapv a2l (array/iter (:data df))) 
+                 :names (a2l columns))]
+    records))
 
 ;;; Binary operator functions
 ;;; Function application, GroupBy & Window
@@ -136,12 +145,10 @@
   (update-in df [:data]
              (fn [data]
                (array/array
-                (map #(let [vfunc (np/vectorize 
-                                   func 
-                                   :otypes [(or otype (:dtype %))])
-                            res (vfunc (array/to-numpy %))]
+                (map #(let [vfunc (np/vectorize func :otypes [otype])
+                            res (vfunc (a2n %))]
                         (array/array res))
-                     (a2l data))
+                     (array/iter data))
                 :dtype :dtype/object))))
   
 
@@ -184,9 +191,9 @@
       (dataframe (condas-> (array/to-numpy (if (true? inplace)
                                              (:data df)
                                              (copy-data df))) $
+                           (seq n) (np/delete (a2n $) n)
                            (seq m) ((np/vectorize
-                                     #(np/delete (array/to-numpy %) m)) $)
-                           (seq n) (np/delete $ n))
+                                     #(np/delete (a2n %) m)) $))
                  :index (index-drop-fn (:index df) mvals m)
                  :columns (index-drop-fn (:columns df) nvals n)
                  :copy false))))
@@ -197,13 +204,26 @@
   [df other]
   (and (= (:shape df) (:shape other))
        (reduce
-        #(and %1 (let [a (nth* (:data df) %2)
-                       other-a (nth* (:data other) %2)]
+        #(and %1 (let [a (array/item (:data df) %2)
+                       other-a (array/item (:data other) %2)]
                    (and (= (:shape a) (:shape other-a))
-                        (np/array-equal (array/to-numpy a)
-                                        (array/to-numpy other-a)))))
+                        (np/array-equal (a2n a) (a2n other-a)))))
         true
         (range (second (:shape df))))))
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.take.html
+(defn take*
+  [df indices & {:keys [axis is-copy] :or {axis 0 is-copy true}}]
+  (case axis
+    0 (dataframe (map #(array/array (iloc df %)) indices)
+                 :columns (cond-> (:columns df) is-copy (index/copy))
+                 :index (index/take* (:index df) indices)
+                 :copy false)
+    1 (dataframe (array/take* (:data df) indices)
+                 :columns (index/take* (:columns df) indices)
+                 :index (cond-> (:index df) is-copy (index/copy))
+                 :copy false)))
+
 
 ;;; Missing data handling
 ;;; Reshaping, sorting, transposing
@@ -228,52 +248,57 @@
   [df by & {:keys [axis ascending inplace kind na-position]
             :or {axis 0 ascending true inplace false
                  sorting :quicksort na-position :last}}]
-  (tufte/p
-   :dataframe/sort-values
-   (if (= 0 axis)
-     (let [_by (to-vector by)
-           positions (map #(index/get-loc (:columns df) %) _by)
-           columns (mapv #(nth* (:data df) %) positions)
-           indices (if (= 1 (count columns))
-                     (array/argsort (first columns))
-                     (array/array (np/argsort (np/rec.fromarrays
-                                               (map array/to-numpy columns)
-                                               :names _by))))
-           index (index/index (array/take* (index/array (:index df))
-                                           indices))
-           data (map #(array/take* % indices)
-                     (ndarray/tolist (array/to-numpy (:data df))))]
-       (dataframe data
-                  :columns (:columns df)
-                  :index index
-                  :copy false)))))
+  (if (= 0 axis)
+    (let [_by (to-vector by)
+          positions (map #(index/get-loc (:columns df) %) _by)
+          columns (array/take* (:data df) positions)
+          indices (if (= 1 (count columns))
+                    (array/argsort (first columns))
+                    (array/array (np/argsort (np/rec.fromarrays
+                                              (map a2l (array/iter columns))
+                                              :names _by))))
+          index (index/index (array/take* (index/array (:index df))
+                                          indices))
+          data (map #(array/take* % (a2n indices)) (array/iter (:data df)))]
+      (dataframe data
+                 :columns (:columns df)
+                 :index index
+                 :copy false))))
 
 ;;; Combining / joining / merging
 ;;; Time series-related
 ;;; Plotting
 ;;; Serialization / IO / Conversion
 
-;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_string.html#pandas.DataFrame.to_string
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_string.html
 (defn to-string
-  [df & {:keys [columns col-space header index
+  [df & {:keys [buf columns col-space header index
                 na-rep formatters float-format sparsify index-names justify
                 max-rows max-cols show-dimensions decimal line-width]
-         :or {show-dimensions false decimal \.}}]
-  (let [columns-df (if (some? columns) (take* $ :columns columns) df)
+         :or {header true index true na-rep "NaN" index-names true 
+              show-dimensions false decimal \. col-space 1}}]
+  (let [columns-df (if (some? columns) 
+                     (let [indices (mapv #(index/get-loc (:columns df) %) 
+                                         columns)]
+                       (take* df indices :axis 1)) 
+                     df)
         strings-df (applymap columns-df str :otype :dtype/object)
         _columns (a2l (index/array (:columns strings-df)))
         widths (as-> strings-df $
-                 (applymap $ count)
-                 (map #(long (np/amax (a2n %)))
-                      (a2l (:data $)))
+                 (applymap $ count :otype :dtype/int64)
+                 (map #(long (np/amax (a2n %))) (array/iter (:data $)))
                  (map-indexed #(max (count (nth _columns %1)) %2) $))
         records (itertuples strings-df)
-        linefn (fn [coll] (string/join 
-                           " "
-                           (map-indexed
-                            #(format (str "%-" (nth widths %1) "s") %2)
-                            coll)))
+        linefn (fn [coll] 
+                 (let [line (string/join
+                             (apply str (repeat col-space \ )) 
+                             (map-indexed
+                              #(format (str "%-" (nth widths %1) "s") %2)
+                              coll))]
+                   (if (some? line-width)
+                     (subs line 0 (min (count line) line-width))
+                     line)))
         headers (linefn _columns)
-        body (map (comp linefn vals) records)]
+        body (map (comp linefn vals) (ndarray/tolist records))]
     (str headers "\n" (string/join "\n" body))))
   

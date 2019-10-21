@@ -32,7 +32,7 @@
   [data & {:keys [dtype copy name* tupleize-cols]
            :or {copy false tupleizecols true}}]
   (if (any-index? data)
-    (if (true? copy) (copy data) data)
+    (if (true? copy) (bamboo.index/copy data) data)
     (let [a (array/array data :dtype dtype :copy copy)]
       (merge {:objtype :objtype/index
               :data a
@@ -130,7 +130,6 @@
     (update-in idx [:data] array/array :copy true)
     idx))
 
-
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.drop.html
 (defmulti drop*
   "Make new Index with passed list of labels deleted"
@@ -138,9 +137,8 @@
 
 (defmethod drop* :default
   [idx labels & {:keys [errors] :or {errors :raise}}]
-  (let [a (to-numpy idx)
-        indices (keep #(get-loc idx % :errors errors) (to-vector labels))]
-    (index (np/delete a indices))))
+  (let [indices (keep #(get-loc idx % :errors errors) (to-vector labels))]
+    (index (np/delete (to-numpy idx) indices))))
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.equals.html
 (defmulti equals
@@ -150,6 +148,18 @@
 (defmethod equals :default
   [idx other]
   (np/array-equal (to-numpy idx) (to-numpy other)))
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.take.html
+(defmulti take*
+  "Return a new Index of the values selected by the indices"
+  (fn [idx indices & {:keys [axis allow-fill fill-value errors] 
+                      :or {axis 0 allow-fill true errors :raise}}] 
+    (:objtype idx)))
+
+(defmethod take* :default
+  [idx indices & {:keys [axis allow-fill fill-value errors]
+                  :or {axis 0 allow-fill true errors :raise}}]
+  (index (array/take* (array idx) indices)))
 
 ;; Compatibility with MultiIndex
 ;; Missing values

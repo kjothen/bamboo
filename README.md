@@ -5,24 +5,23 @@ A pandas dataframe-like library. Includes numcloj, a numpy-like library.
 
 ## Usage
 ```clojure
-user=> (require '[bamboo.core :as pd]
-                '[bamboo.dataframe :as dataframe]
-                '[bamboo.pprint :as pp])
+% clj -A:rebel
+user=> (require '[bamboo.checked.core :as pd] '[bamboo.checked.dataframe :as dataframe])
+nil
 user=> (def df (pd/read-csv "example.csv"))
-user=> (pp/pprint df)
-
-|   | a |  b |  c |   d |
-|---+---+----+----+-----|
-| 0 | 1 |  2 |  3 | NaN |
-| 1 | 5 |  6 |  7 | 8.0 |
-| 2 | 9 | 10 | 11 | NaN |
-
-user=> (pp/pprint (dataframe/drop* df :columns ["b" "d"] :index 1))
-
-|   | a |  c |
-|---+---+----|
-| 0 | 1 |  3 |
-| 2 | 9 | 11 |
+#'user/df
+user=> (println (dataframe/to-string df))
+a b  c  d  
+1 2  3  NaN
+5 6  7  8.0
+9 10 11 NaN
+nil
+user=> (println (dataframe/to-string df :columns ["b" "d"]))
+b  d  
+2  NaN
+6  8.0
+10 NaN
+nil
 ```
 
 ## Testing

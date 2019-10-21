@@ -31,8 +31,9 @@
      :itemsize (_itemsize data)
      :strides (or strides (_strides data))
      :nbytes (_nbytes data)
-     :flags {:writebackifcopy false :updateifcopy false
-             :aligned false :writeable true}}))
+    ;  :flags {:writebackifcopy false :updateifcopy false
+    ;          :aligned false :writeable true}
+     }))
 
 (defn ndarray? [a]
   (and (map? a) (isa? dtype/numcloj-hierarchy (:dtype a) :dtype/numcloj)))
@@ -61,7 +62,7 @@
                                      (asarray (b/array dtype size)))))
     (ndarray? a) a
     (sequential? a) (asclojurearray (vec a))
-    :else (throw (ex-info (str "Cannot create ndarray from: " (type a))
+    :else (throw (ex-info (str "Cannot create ndarray from: " (type a) " " a)
                           {:type :ValueError}))))
 
 (defmethod asarray (Class/forName "[Z") [a] 

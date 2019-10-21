@@ -1,8 +1,8 @@
 (ns bamboo.dataframe-test
   (:require [clojure.test :refer [deftest is]]
-            [bamboo.dataframe :refer [dataframe drop* equals loc sort-values]]
+            [bamboo.dataframe :refer [dataframe drop* equals loc sort-values 
+                                      to-string]]
             [bamboo.index :as index]
-            [bamboo.pprint :as pprint]
             [numcloj.core :as np]))
 
 (def vs [[false true false true false]
@@ -16,11 +16,13 @@
 (def bool-index [true false true false true])
 (def obj-index ["m" "n" "o" "p" "q"])
 
+(defn print-df [df] (do (println) (println (to-string df))))
+
 (deftest dataframe-test
   (let [columns obj-index
         index int64-index
         df (dataframe vs :columns columns :index index)]   
-    (pprint/pprint df)
+    (print-df df)
     
     ;; expected shape, columns and index 
     (is (= [(count index) (count columns)] (:shape df)))
@@ -31,48 +33,48 @@
   (let [columns obj-index
         index int64-index
         df (dataframe vs :columns columns :index index)]
-    (pprint/pprint df)
+    (print-df df)
 
     ;; take single index
     (let [expected (dataframe (map #(take 1 %) vs)
                               :columns columns
                               :index (take 1 index))]
-      (pprint/pprint expected)
+      (print-df df)
       (is (equals expected (loc df (first index)))))
 
     ;; take multiple indices
     (let [expected (dataframe (map #(take 2 %) vs)
                               :columns columns
                               :index (take 2 index))]
-      (pprint/pprint expected)
+      (print-df df)
       (is (equals expected (loc df (take 2 index)))))
-
+    
     ;; take multiple index, mutliple columns
     (let [expected (dataframe (map #(take 1 %) (take 2 vs))
                               :columns (take 2 columns)
                               :index (take 1 index))]
-      (pprint/pprint expected)
+      (print-df expected)
       (is (equals expected (loc df (first index) (take 2 columns)))))
-        
+    
     ;; take multiple indices, multiple columns
     (let [expected (dataframe (map #(take 2 %) (take 2 vs))
                               :columns (take 2 columns)
                               :index (take 2 index))]
-      (pprint/pprint expected)
-      (is (equals expected (loc df (take 2 index) (take 2 columns)))))))
+      (print-df expected)
+      (is (equals expected (loc df (take 2 index) (take 2 columns)))))
+    ))
     
 (deftest drop*-test
   (let [columns obj-index
         index int64-index
         df (dataframe vs :columns columns :index index)]
-
-    (pprint/pprint df)
+    (print-df df)
 
     ;; drop first column
     (let [expected (dataframe (nthrest vs 1)
                               :columns (nthrest columns 1)
                               :index index)]
-      (pprint/pprint expected)
+      (print-df expected)
       (is (equals expected (drop* df (nth columns 0))))
       (is (equals expected (drop* df :columns (nth columns 0)))))
 
@@ -81,7 +83,7 @@
           expected (dataframe (take n vs)
                               :columns (take n columns)
                               :index index)]
-      (pprint/pprint expected)
+      (print-df expected)
       (is (equals expected (drop* df (take-last 2 columns))))
       (is (equals expected (drop* df :columns (take-last 2 columns)))))
     
@@ -89,7 +91,7 @@
     (let [expected (dataframe (mapv #(nthrest % 1) vs)
                               :columns columns
                               :index (nthrest index 1))]
-      (pprint/pprint expected)
+      (print-df expected)
       (is (equals expected (drop* df (nth index 0) :axis 1)))
       (is (equals expected (drop* df :index (nth index 0)))))
     
@@ -98,7 +100,7 @@
           expected (dataframe (mapv #(take m %) vs)
                               :columns columns
                               :index (take m index))]
-      (pprint/pprint expected)
+      (print-df expected)
       (is (equals expected (drop* df (take-last 2 index) :axis 1)))
       (is (equals expected (drop* df :index (take-last 2 index)))))
     
@@ -108,7 +110,7 @@
           expected (dataframe (mapv #(take n %) (take m vs))
                               :columns (take m columns)
                               :index (take n index))]
-      (pprint/pprint expected)
+      (print-df expected)
       (is (equals expected (drop* df
                                   :columns (take-last 2 columns)
                                   :index (take-last 2 index)))))
@@ -151,13 +153,14 @@
                                    :index "not-found"))))
     
     ;; ignore not found errors
-    (pprint/pprint df)
+    (print-df df)
     (is (equals df (drop* df "not-found" :errors :ignore)))
     (is (equals df (drop* df :columns "not-found" :errors :ignore)))
     (is (equals df (drop* df "not-found" :axis 1 :errors :ignore)))
     (is (equals df (drop* df :index "not-found" :errors :ignore)))
     (is (equals df (drop* df :columns "not-found" :index "not-found"
-                          :errors :ignore)))))
+                          :errors :ignore)))
+    ))
 
 (deftest sort-values-test
   (let [columns obj-index
@@ -165,20 +168,20 @@
         df (dataframe vs :columns columns :index index)]
 
     ;; sort by one column
-    (pprint/pprint df)
+    (print-df df)
     (doall
      (map-indexed
       (fn [idx v]
         (let [df-sorted (sort-values df (nth columns idx))
               expected (map first (sort-by second compare (zipmap index v)))]
-          (pprint/pprint df-sorted)
+          (print-df df-sorted)
           (is (np/array-equal
                expected
                (index/to-numpy (:index df-sorted))))))
       vs))
 
     ;; sort by two columns    
-    (pprint/pprint df)
+    (print-df df)
     (doall
      (map
       (fn [[idx1 idx2]]
@@ -191,8 +194,9 @@
                                    (juxt #(nth (second %) 0)
                                          #(nth (second %) 1))
                                    columns))]
-          (pprint/pprint df-sorted)
+          (print-df df-sorted)
           (is (np/array-equal
                expected
                (index/to-numpy (:index df-sorted))))))
-      (partition 2 1 (range (count columns)))))))
+      (partition 2 1 (range (count columns)))))
+    ))

@@ -1,6 +1,6 @@
 (ns numcloj.functional
   (:require [numcloj.array-buffer :as b]
-            [numcloj.array-creation :refer [asarray empty*]]))
+            [numcloj.array-creation :refer [asarray empty* frombuffer]]))
 
 ;;;; Functional Programming
 
@@ -12,4 +12,4 @@
     (let [_a (asarray a)
           otype (or (first otypes) (:dtype a))
           o (empty* (:size _a) :dtype otype)]
-      (b/map-values f _a o))))
+      (frombuffer (b/map-values f _a o) :dtype otype))))

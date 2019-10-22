@@ -41,6 +41,9 @@
 (defn ndarray-expr? [a]
   (and (map? a) (ndarray? (:array a)) (ifn? (:expr a))))
 
+;;; Forward declarations
+(declare copy)
+
 ;;; From existing data
 
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.asarray.html#numpy.asarray
@@ -78,8 +81,6 @@
 (defmethod asarray java.lang.Long [a] (asclojurearray (vector a)))
 (defmethod asarray java.lang.String [a] (asclojurearray (vector a)))
 
-(declare copy)
-
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array
 (defn array
   "Create an array"
@@ -95,6 +96,12 @@
         :or {order \K}}]
   (conversion/copy (asarray a) :order order))
 
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.frombuffer.html
+(defn frombuffer
+  "Interpret a buffer as a 1-dimensional array"
+  [buffer & {:keys [dtype count* offset] 
+             :or {dtype :dtype/float64 count* -1 offset 0}}]
+  (ndarray (b/size buffer) dtype :buffer buffer :offset offset))
 
 ;;; Ones and zeros
 

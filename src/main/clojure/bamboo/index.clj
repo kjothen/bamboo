@@ -14,16 +14,18 @@
 
 (declare copy)
 (declare get-loc)
+(declare to-list)
+(declare to-native-types)
 (declare to-numpy)
 
 (defn- any-index? [a] (isa? objtype/bamboo-hierarchy (:objtype a) :objtype/index))
 (defn- datetimeindex? [a] (= :objtype/datetimeindex (:objtype a)))
 
-(defn- hash-array
+(defn- hash-values
   "Hash an arrray"
   [a]
-  (zipmap (ndarray/tolist (array/to-numpy a :copy false)) 
-          (range (first (:shape a)))))
+  ; TODO - non-unique indices
+  (zipmap (to-list a) (range (first (:shape a)))))
 
 ;;; Index
 (defn index
@@ -36,7 +38,7 @@
     (let [a (array/array data :dtype dtype :copy copy)]
       (merge {:objtype :objtype/index
               :data a
-              :loc (hash-array a)
+              :loc (hash-values a)
               :name* name*}
              (select-keys a [:shape :ndim
                              :size :nbytes])))))
@@ -71,7 +73,8 @@
 
 (defmethod to-native-types :default 
   [idx] 
-  (array/array (map str (ndarray/tolist (to-numpy idx))) :dtype :dtype/object))
+  ((np/vectorize str :otypes [:dtype/object]) 
+   (to-numpy idx)))
 
 (defmethod to-native-types :objtype/datetimeindex
   [idx]
@@ -106,11 +109,10 @@
                     (contains? format-ks :ms) (:ms formats)
                     (contains? format-ks :dt) (:dt formats)
                     :else (:d formats))]
-    (array/array
-     (map #(.format (to-datetime %) formatter) (ndarray/tolist (to-numpy idx)))
-     :dtype :dtype/object)))
+    ((np/vectorize #(.format (to-datetime %) formatter) :otypes [:dtype/object])
+     (to-numpy idx))))
 
-; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.to_numpy.html
+ ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.to_numpy.html
 (defn to-numpy
   "A NumCloj ndarray representing the values in this Series or Index"
   [idx & {:keys [copy] :or {copy false}}]
@@ -164,7 +166,15 @@
 ;; Compatibility with MultiIndex
 ;; Missing values
 ;; Conversion
-(defn to-list [idx] ((comp ndarray/tolist array/to-numpy to-native-types) idx))
+(defn to-list 
+  "Return a list of the values"
+  [idx] 
+  ((comp ndarray/tolist array/to-numpy) idx))
+
+(defn map*
+  "Map values using input correspondence (a dict, Series, or function)"
+  [idx mapper & {:keys [na-action] :or [na-action :ignore]}]
+  (index ((np/vectorize mapper) (to-list idx))))
 
 ;; Sorting
 ;; Time-specific operations
@@ -224,7 +234,7 @@
     (let [a (array/array data :dtype :dtype/int64 :copy copy)]
       (merge {:objtype :objtype/datetimeindex
               :data a
-              :loc (hash-array a)
+              :loc (hash-values a)
               :name* name*
               :freq freq
               :tz tz}

@@ -29,6 +29,26 @@
 (stest/instrument `bamboo.dataframe/dataframe)
 (def dataframe bamboo.dataframe/dataframe)
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
+(s/def :sort-values/by (s/or :one scalar? :many (s/coll-of scalar?)))
+(s/def :sort-values/axis (s/int-in 0 1))
+(s/def :sort-values/ascending boolean?)
+(s/def :sort-values/inplace boolean?)
+(s/def :sort-values/kind #{:quicksort :mergesort :heapsort})
+(s/def :sort-values/na-position #{:first :last})
+
+(s/fdef :bamboo.dataframe/sort-values
+  :args (s/cat :df dataframe?
+               :by :sort-values/by
+               :kwargs (s/keys* :opt-un
+                                [:sort-values/axis
+                                 :sort-values/ascending
+                                 :sort-values/inplace
+                                 :sort-values/kind
+                                 :sort-values/na-position])))
+(stest/instrument `bamboo.dataframe/sort-values)
+(def sort-values bamboo.dataframe/sort-values)
+
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_string.html
 (s/def :to-string/buf #(instance? % java.io.Writer))
 (s/def :to-string/columns (s/coll-of scalar?))

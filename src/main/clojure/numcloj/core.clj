@@ -31,6 +31,7 @@
 (def asarray array-creation/asarray)
 (def array array-creation/array)
 (def copy array-creation/copy)
+(def frombuffer array-creation/frombuffer)
 
 ;; Creating record arrays (numpy.rec)
 (def recarray array-creation/recarray)

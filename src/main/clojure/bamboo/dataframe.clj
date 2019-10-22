@@ -109,6 +109,7 @@
                :label (vector (index/get-loc (:index df) index-label))
                :labels (map #(index/get-loc (:index df) %) index-label)
                nil)
+           _ (println m)
            mvals (when (some? m) (array/take* (index/array (:index df)) m))
            n (case column-label-type
                :label (vector (index/get-loc (:columns df) column-label))
@@ -130,8 +131,8 @@
   (let [columns (index/to-native-types (:columns df))
         records (np/rec.fromarrays 
                  (mapv a2l (array/iter (:data df))) 
-                 :names (a2l columns))]
-    records))
+                 :names columns)]
+    (array/array records)))
 
 ;;; Binary operator functions
 ;;; Function application, GroupBy & Window
@@ -139,18 +140,13 @@
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.applymap.html
 (defn applymap
   "This method applies a function that accepts and returns a scalar 
-   to every element of a DataFrame" 
+   to every element of a DataFrame"
   [df func & {:keys [otype]}]
   ; TODO: don't supply otype, taint the first result to derive this
   (update-in df [:data]
              (fn [data]
-               (array/array
-                (map #(let [vfunc (np/vectorize func :otypes [otype])
-                            res (vfunc (a2n %))]
-                        (array/array res))
-                     (array/iter data))
-                :dtype :dtype/object))))
-  
+               (asarrays (map #((np/vectorize func :otypes [otype]) (a2n %))
+                              (array/iter data)))))) 
 
 ;;; Computations / Descriptive Stats
 ;;; Reindexing / Selection / label manipulation
@@ -277,28 +273,36 @@
                 max-rows max-cols show-dimensions decimal line-width]
          :or {header true index true na-rep "NaN" index-names true 
               show-dimensions false decimal \. col-space 1}}]
-  (let [columns-df (if (some? columns) 
-                     (let [indices (mapv #(index/get-loc (:columns df) %) 
-                                         columns)]
-                       (take* df indices :axis 1)) 
-                     df)
-        strings-df (applymap columns-df str :otype :dtype/object)
-        _columns (a2l (index/array (:columns strings-df)))
-        widths (as-> strings-df $
-                 (applymap $ count :otype :dtype/int64)
-                 (map #(long (np/amax (a2n %))) (array/iter (:data $)))
-                 (map-indexed #(max (count (nth _columns %1)) %2) $))
-        records (itertuples strings-df)
-        linefn (fn [coll] 
+  (let [df-strs
+        (applymap
+         (if (some? columns)
+           (take* df (map #(index/get-loc (:columns df) %) columns) :axis 1)
+           df)
+         str :otype :dtype/object)
+        idx-strs (ndarray/tolist (index/to-native-types (:index df-strs)))
+        idx-width (apply max (map count idx-strs))
+        space-fn #(apply str (repeat % \ ))
+        col-strs (as-> df-strs $
+                   (index/to-native-types (:columns $))
+                   (ndarray/tolist $)
+                   (cons (space-fn idx-width) $)) 
+        col-widths (as-> df-strs $
+                     (applymap $ count :otype :dtype/int64)
+                     (map #(long (np/amax (a2n %))) (array/iter (:data $)))
+                     (map-indexed #(max (count (nth col-strs %1)) %2) $)
+                     (cons idx-width $))
+        records (itertuples df-strs)
+        linefn (fn [coll]
                  (let [line (string/join
-                             (apply str (repeat col-space \ )) 
+                             (space-fn col-space)
                              (map-indexed
-                              #(format (str "%-" (nth widths %1) "s") %2)
+                              #(format (str "%-" (nth col-widths %1) "s") %2)
                               coll))]
                    (if (some? line-width)
                      (subs line 0 (min (count line) line-width))
                      line)))
-        headers (linefn _columns)
-        body (map (comp linefn vals) (ndarray/tolist records))]
+        headers (linefn col-strs)
+        body (map-indexed
+              #(linefn (cons (nth idx-strs %1) (vals %2)))
+              (array/iter records))]
     (str headers "\n" (string/join "\n" body))))
-  

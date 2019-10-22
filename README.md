@@ -11,16 +11,16 @@ nil
 user=> (def df (pd/read-csv "example.csv"))
 #'user/df
 user=> (println (dataframe/to-string df))
-a b  c  d  
-1 2  3  NaN
-5 6  7  8.0
-9 10 11 NaN
+  a b  c  d  
+0 1 2  3  NaN
+1 5 6  7  8.0
+2 9 10 11 NaN
 nil
-user=> (println (dataframe/to-string df :columns ["b" "d"]))
-b  d  
-2  NaN
-6  8.0
-10 NaN
+user=> (println (dataframe/to-string df :columns ["c" "d"]))
+  c  d  
+0 3  NaN
+1 7  8.0
+2 11 NaN
 nil
 ```
 

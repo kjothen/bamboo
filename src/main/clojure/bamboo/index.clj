@@ -173,7 +173,7 @@
 
 (defn map*
   "Map values using input correspondence (a dict, Series, or function)"
-  [idx mapper & {:keys [na-action] :or [na-action :ignore]}]
+  [idx mapper & {:keys [na-action] :or {na-action :ignore}}]
   (index ((np/vectorize mapper) (to-list idx))))
 
 ;; Sorting

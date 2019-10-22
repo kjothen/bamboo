@@ -1,7 +1,6 @@
 (ns bamboo.dataframe
-  (:require [clojure.spec.alpha :as s]
-            [clojure.pprint :as pprint]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
+            [io.aviso.ansi :as ansi]
             [taoensso.tufte :as tufte]
             [bamboo.utility :refer [array-zipmap condas-> in?
                                     scalar? to-vector]]
@@ -109,7 +108,6 @@
                :label (vector (index/get-loc (:index df) index-label))
                :labels (map #(index/get-loc (:index df) %) index-label)
                nil)
-           _ (println m)
            mvals (when (some? m) (array/take* (index/array (:index df)) m))
            n (case column-label-type
                :label (vector (index/get-loc (:columns df) column-label))
@@ -209,9 +207,10 @@
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.take.html
 (defn take*
+  "Return the elements in the given positional indices along an axis"
   [df indices & {:keys [axis is-copy] :or {axis 0 is-copy true}}]
   (case axis
-    0 (dataframe (map #(array/array (iloc df %)) indices)
+    0 (dataframe (map (partial iloc df) indices)
                  :columns (cond-> (:columns df) is-copy (index/copy))
                  :index (index/take* (:index df) indices)
                  :copy false)
@@ -253,8 +252,8 @@
                     (array/array (np/argsort (np/rec.fromarrays
                                               (map a2l (array/iter columns))
                                               :names _by))))
-          index (index/index (array/take* (index/array (:index df))
-                                          indices))
+          index (index/index
+                 (array/take* (index/array (:index df)) indices))
           data (map #(array/take* % (a2n indices)) (array/iter (:data df)))]
       (dataframe data
                  :columns (:columns df)
@@ -285,24 +284,27 @@
         col-strs (as-> df-strs $
                    (index/to-native-types (:columns $))
                    (ndarray/tolist $)
-                   (cons (space-fn idx-width) $)) 
+                   (cons (space-fn idx-width) $))
         col-widths (as-> df-strs $
                      (applymap $ count :otype :dtype/int64)
                      (map #(long (np/amax (a2n %))) (array/iter (:data $)))
-                     (map-indexed #(max (count (nth col-strs %1)) %2) $)
+                     (map-indexed #(max (count (nth col-strs (inc %1))) %2) $)
                      (cons idx-width $))
         records (itertuples df-strs)
-        linefn (fn [coll]
-                 (let [line (string/join
-                             (space-fn col-space)
-                             (map-indexed
-                              #(format (str "%-" (nth col-widths %1) "s") %2)
-                              coll))]
-                   (if (some? line-width)
-                     (subs line 0 (min (count line) line-width))
-                     line)))
-        headers (linefn col-strs)
-        body (map-indexed
-              #(linefn (cons (nth idx-strs %1) (vals %2)))
-              (array/iter records))]
+        col-fn (fn [fmt width s] (fmt (format (str "%-" width "s") s)))
+        line-fn (fn [coll ffmt fmt]
+                  (let [cols (map-indexed (fn [i v]
+                                            (let [fmt (if (zero? i) ffmt fmt)
+                                                  width (nth col-widths i)]
+                                              (col-fn fmt width v)))
+                                          coll)
+                        line (string/join (space-fn col-space) cols)]
+                    (if (some? line-width)
+                      (subs line 0 (min (ansi/visual-length line) line-width))
+                      line)))
+        headers (line-fn col-strs ansi/bold-white ansi/bold-white)
+        body (map-indexed (fn [i m]
+                            (let [coll (cons (nth idx-strs i) (vals m))]
+                              (line-fn coll ansi/bold-white identity)))
+                          (array/iter records))]
     (str headers "\n" (string/join "\n" body))))

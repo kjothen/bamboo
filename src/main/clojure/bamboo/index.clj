@@ -1,7 +1,7 @@
 (ns bamboo.index
   (:require [bamboo.array :as array]
             [bamboo.objtype :as objtype]
-            [bamboo.utility :refer [in? to-vector]]
+            [bamboo.utility :refer [condas-> in? spaces to-vector]]
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray])
   (:import (java.time DayOfWeek Duration Instant Period
@@ -40,8 +40,7 @@
               :data a
               :loc (hash-values a)
               :name* name*}
-             (select-keys a [:shape :ndim
-                             :size :nbytes])))))
+             (select-keys a [:shape :size])))))
   
 ;; Properties
 
@@ -238,5 +237,53 @@
               :name* name*
               :freq freq
               :tz tz}
-             (select-keys a [:shape :ndim
-                             :size :nbytes])))))
+             (select-keys a [:shape :size])))))
+
+;;; Extensions
+(defmulti show (fn [idx max-rows max-width] (:objtype idx)))
+(defmethod show :default [idx max-rows max-width] (println idx))
+
+(defmethod show :objtype/rangeindex [idx _ _]
+  (println (format "RangeIndex(start=%d, stop=%d, step=%d)"
+                   (:start idx) (:stop idx) (:step idx))))
+
+(defmethod show :objtype/datetimeindex [idx max-rows max-width] 
+  (let [start-obj "DatetimeIndex(["
+        end-obj-tokens ["], " (format "dtype='%s', length=%d, freq=%s)"
+                                     (name (get-in idx [:data :data :dtype]))
+                                     (get-in idx [:data :data :size])
+                                     (:freq idx))]
+        elipsis "..."
+        dates (condas-> (ndarray/tolist (to-native-types idx)) $
+                        (> (count $) max-rows) (concat (take 10 $)
+                                                            [elipsis]
+                                                            (take-last 10 $)))
+        len (count dates)]
+    (loop [i 0
+           date-tokens [start-obj]]
+      (if-not (< i len)
+        (let [lns (reduce (fn [[s ln-width] token]
+                            (let [width (+ ln-width (count token))
+                                  indent (spaces (if (in? token end-obj-tokens)
+                                                   (dec (count start-obj))
+                                                   (count start-obj)))]
+                              (if (> width max-width)
+                                [(str s \newline indent token) 
+                                 (+ (count indent) (count token))]
+                                [(str s token) 
+                                 width])))
+                          ["" 0]
+                          (concat date-tokens end-obj-tokens))]
+          (println (apply str (first lns))))
+          (let [dt (nth dates i)
+                elipsis? (= elipsis dt)
+                s (if elipsis?
+                    (format (str "%-" max-width "s") elipsis)
+                    (if (string? dt)
+                      (format "'%s'" dt)
+                      (format "%s" dt)))
+                sep (if elipsis?
+                      ""
+                      (if (< i (dec len)) ", " ""))]
+            (recur (inc i)
+                   (conj date-tokens s sep)))))))

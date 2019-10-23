@@ -25,7 +25,9 @@
 (defn array [dtype size] (make-buffer {:dtype dtype :size size}))
 (defn from-sequential [dtype coll] (make-buffer {:dtype dtype :seq coll}))
 
-(defn copy [buf] (Arrays/copyOf buf (alength buf)))
+(defn copy
+  ([buf] (Arrays/copyOf buf (alength buf)))
+  ([buf len] (Arrays/copyOf buf len)))
 (defn fill [buf val#] (Arrays/fill buf val#))
 (def get* aget)
 (def set* aset)

@@ -1,7 +1,8 @@
 (ns numcloj.api.array-manipulation
   (:require [numcloj.api.counting :refer [count-nonzero]]
             [numcloj.array.item-manipulation :refer [put]]
-            [numcloj.array-creation :refer [asarray empty* ones zeros]]
+            [numcloj.array-creation :refer [asarray empty* frombuffer 
+                                            ones zeros]]
             [numcloj.array-buffer :as b]))
 
 ;;;; Array manipulation routines
@@ -51,5 +52,13 @@
         out (empty* (count-nonzero mask) :dtype (:dtype _a))]
     (copyto out _a :where mask)
     out))
+
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.resize.html
+(defn resize
+  "Return a new array with the specified shape"
+  [a new-shape]
+  (let [_a (asarray a)
+        len (if (sequential? new-shape) (first new-shape) new-shape)]
+    (frombuffer (b/copy (:data _a) len) :dtype (:dtype _a))))
 
 ;;; Rearranging elements

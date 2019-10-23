@@ -3,7 +3,7 @@
             [io.aviso.ansi :as ansi]
             [taoensso.tufte :as tufte]
             [bamboo.utility :refer [array-zipmap condas-> in?
-                                    scalar? to-vector]]
+                                    scalar? spaces to-vector]]
             [bamboo.array :as array]
             [bamboo.index :as index]
             [numcloj.core :as np]
@@ -126,7 +126,7 @@
 (defn itertuples
   "Iterate over DataFrame rows as namedtuples"
   [df & {:keys [index name*] :or {index true name* "Pandas"}}]
-  (let [columns (index/to-native-types (:columns df))
+  (let [columns (ndarray/tolist (index/to-native-types (:columns df)))
         records (np/rec.fromarrays 
                  (mapv a2l (array/iter (:data df))) 
                  :names columns)]
@@ -210,7 +210,7 @@
   "Return the elements in the given positional indices along an axis"
   [df indices & {:keys [axis is-copy] :or {axis 0 is-copy true}}]
   (case axis
-    0 (dataframe (map (partial iloc df) indices)
+    0 (dataframe (map #(array/take* % indices) (array/iter (:data df)))
                  :columns (cond-> (:columns df) is-copy (index/copy))
                  :index (index/take* (:index df) indices)
                  :copy false)
@@ -219,6 +219,17 @@
                  :index (cond-> (:index df) is-copy (index/copy))
                  :copy false)))
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.truncate.html
+(defn truncate
+  "Truncate a Series or DataFrame before and after some index value" 
+  [df before after & {:keys [axis copy] :or {axis 0 copy true}}]
+  (case axis
+    (0 :index) (take* df (range (index/get-loc (:index df) before)
+                                (index/get-loc (:index df) after))
+                      :axis 0 :is-copy copy)
+    (1 :columns) (take* df (range (index/get-loc (:columns df) before)
+                                  (index/get-loc (:columns df) after))
+                        :axis 1 :is-copy copy)))
 
 ;;; Missing data handling
 ;;; Reshaping, sorting, transposing
@@ -272,19 +283,22 @@
                 max-rows max-cols show-dimensions decimal line-width]
          :or {header true index true na-rep "NaN" index-names true 
               show-dimensions false decimal \. col-space 1}}]
-  (let [df-strs
-        (applymap
-         (if (some? columns)
-           (take* df (map #(index/get-loc (:columns df) %) columns) :axis 1)
-           df)
-         str :otype :dtype/object)
+  (let [df'
+        (condas->
+         df $
+         (some? columns) (take* $ (map #(index/get-loc (:columns df) %) columns)
+                                :axis 1)
+         (some? max-cols) (take* $ (range (min max-cols (second (:shape $))))
+                                 :axis 1)
+         (some? max-rows) (take* $ (range (min max-rows (first (:shape $))))
+                                 :axis 0))
+        df-strs (applymap df' str :otype :dtype/object)
         idx-strs (ndarray/tolist (index/to-native-types (:index df-strs)))
         idx-width (apply max (map count idx-strs))
-        space-fn #(apply str (repeat % \ ))
         col-strs (as-> df-strs $
                    (index/to-native-types (:columns $))
                    (ndarray/tolist $)
-                   (cons (space-fn idx-width) $))
+                   (cons (spaces idx-width) $))
         col-widths (as-> df-strs $
                      (applymap $ count :otype :dtype/int64)
                      (map #(long (np/amax (a2n %))) (array/iter (:data $)))
@@ -298,7 +312,7 @@
                                                   width (nth col-widths i)]
                                               (col-fn fmt width v)))
                                           coll)
-                        line (string/join (space-fn col-space) cols)]
+                        line (string/join (spaces col-space) cols)]
                     (if (some? line-width)
                       (subs line 0 (min (ansi/visual-length line) line-width))
                       line)))
@@ -307,4 +321,6 @@
                             (let [coll (cons (nth idx-strs i) (vals m))]
                               (line-fn coll ansi/bold-white identity)))
                           (array/iter records))]
-    (str headers "\n" (string/join "\n" body))))
+    (str headers \newline (string/join \newline body))))
+
+(defn show [df max-rows] (println (to-string df :max-rows max-rows)))

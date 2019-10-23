@@ -6,34 +6,15 @@
 ;;;; Array creation routines
 ;;;; https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html
 
-;;; helpers
-(defmulti shaper class)
-(defmethod shaper :default [shape] shape)
-(defmethod shaper Number [shape] [(long shape) nil])
-
-;;; ndarray
-(defn- _size [data] (b/size data))
-(defn- _itemsize [data] (* 8 (_size data)))
-(defn- _ndim [data] 1)
-(defn- _nbytes [data] (* (_ndim data) (_itemsize data)))
-(defn- _strides [data] [(_itemsize data) nil])
-
 ;;; ndarray
 (defn- ndarray
   [shape dtype & {:keys [buffer offset strides order]}]
-  (let [_shape (shaper shape)
-        data (or buffer (b/array dtype (first _shape)))]
+  (let [len (if (sequential? shape) (first shape) shape)
+        data (or buffer (b/array dtype len))]
     {:data data
      :dtype dtype
-     :shape _shape
-     :ndim (_ndim data)
-     :size (_size data)
-     :itemsize (_itemsize data)
-     :strides (or strides (_strides data))
-     :nbytes (_nbytes data)
-    ;  :flags {:writebackifcopy false :updateifcopy false
-    ;          :aligned false :writeable true}
-     }))
+     :size (b/size data)
+     :shape [len nil]}))
 
 (defn ndarray? [a]
   (and (map? a) (isa? dtype/numcloj-hierarchy (:dtype a) :dtype/numcloj)))
@@ -56,13 +37,13 @@
 (defmethod asarray :default [a] 
   (cond
     (ndarray-expr? a)
-    (let [size (:size (:array a))
+    (let [len (:size (:array a))
           dtype (:dtype a)]
-      (ndarray (shaper size)
+      (ndarray len
                dtype
                :buffer (b/map-values (:expr a)
                                      (:array a)
-                                     (asarray (b/array dtype size)))))
+                                     (asarray (b/array dtype len)))))
     (ndarray? a) a
     (sequential? a) (asclojurearray (vec a))
     :else (throw (ex-info (str "Cannot create ndarray from: " (type a) " " a)
@@ -101,7 +82,9 @@
   "Interpret a buffer as a 1-dimensional array"
   [buffer & {:keys [dtype count* offset] 
              :or {dtype :dtype/float64 count* -1 offset 0}}]
-  (ndarray (b/size buffer) dtype :buffer buffer :offset offset))
+  (if (= -1 count*)
+    (ndarray (b/size buffer) dtype :buffer buffer :offset offset)
+    (ndarray count* dtype :buffer buffer :offset offset)))
 
 ;;; Ones and zeros
 

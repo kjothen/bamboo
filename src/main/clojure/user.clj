@@ -1,2 +1,2 @@
-(require '[bamboo.checked.core :as pd]
-         '[bamboo.checked.dataframe :as dataframe])
+(require '[bamboo.core :as pd]
+         '[bamboo.dataframe :as dataframe])

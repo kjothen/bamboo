@@ -18,10 +18,8 @@
 (defn- from-numpy [a]
   {:objtype :objtype/extension-array
    :dtype :dtype/bamboo
-   :nbytes (:nbytes a)
-   :ndim 1
-   :shape [(:size a) nil]
-   :data a})
+   :data a
+   :shape [(:size a) nil]})
 
 ;;; Interface
 

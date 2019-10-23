@@ -87,3 +87,4 @@
 ;;; General utility functions
 ;;; Extensions
 (def array bamboo.core/array)
+(defmulti show :default)

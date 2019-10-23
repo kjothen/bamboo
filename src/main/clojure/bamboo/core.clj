@@ -1,5 +1,6 @@
 (ns bamboo.core
-  (:require [bamboo.array :as array]
+  (:require [clojure.pprint]
+            [bamboo.array :as array]
             [bamboo.csv :as csv]
             [bamboo.dataframe :as dataframe]
             [bamboo.index :as index]
@@ -46,4 +47,32 @@
 ;;; Extensions
 (def array array/array)
 
-  
+(def ^:dynamic *show-length* 100)
+(def ^:dynamic *show-width* 80)
+
+(defmulti show-numcloj :dtype)
+(defmethod show-numcloj :default [a] 
+  (binding [*print-level* 1
+            *print-length* *show-length*]
+    (clojure.pprint/pprint a)))
+
+(defmulti show :objtype)
+(defmethod show :default [m] 
+  (binding [*print-level* 1 
+            *print-length* *show-length*] 
+    (clojure.pprint/pprint m)))
+
+(defmethod show :objtype/dataframe [df] 
+  (dataframe/show df *show-length*))
+
+(defmethod show :objtype/datetimeindex [idx] 
+  (index/show idx *show-length* *show-width*))
+
+(defmethod show :objtype/rangeindex [idx]
+  (index/show idx *show-length* *show-width*))
+
+(defmethod show :objtype/index [idx]
+  (index/show idx *show-length* *show-width*))
+
+(defmethod show :objtype/extension-array [a]
+  (show-numcloj (:data a)))

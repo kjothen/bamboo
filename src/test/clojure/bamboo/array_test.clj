@@ -9,9 +9,8 @@
         arr (array data)]
     (is (= {:objtype :objtype/extension-array 
             :dtype :dtype/bamboo
-            :ndim 1 
             :shape [6 nil]}
-           (select-keys arr [:objtype :dtype :ndim :shape])))
+           (select-keys arr [:objtype :dtype :shape])))
     (is (true? (np/array-equal data (to-numpy arr))))
     (is (= 42.7 (np/all (to-numpy arr))))
     (is (= "a" (np/any (to-numpy arr))))

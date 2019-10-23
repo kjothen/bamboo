@@ -15,6 +15,8 @@
 (defn not-nan? [x] (not (nan? x)))
 (defn scalar? [x] ((some-fn int? double? boolean? string?) x))
 
+(defn spaces [n] (apply str (repeat n \ )))
+
 (defn parse-long [s]
   (tufte/p
    :bamboo/utility.parse-long

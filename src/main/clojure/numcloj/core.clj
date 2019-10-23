@@ -40,6 +40,7 @@
 ;;; Array manipulation routines
 (def copyto array-manipulation/copyto)
 (def delete array-manipulation/delete)
+(def resize array-manipulation/resize)
 
 ;;; Binary operations
 ;;; String operations

@@ -126,7 +126,7 @@ Select confirmed exoplanets with a disposition score equal to 1.0:
 
 ```python
 # python
-cols = ['kepid', 'kepoi_name', 'kepler_name', 'koi_pdisposition', 'koi_score', 'koi_period']
+cols = ['kepid', 'kepoi_name', 'kepler_name', 'koi_disposition', 'koi_score']
 df_confirmed = df[(df["koi_disposition"] == "CONFIRMED") & (df["koi_score"] == 1.0)]
 print (df_confirmed.to_string(columns=cols, max_rows=4))
 ```

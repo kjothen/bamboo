@@ -87,6 +87,30 @@
         typed-afn (type-hint-array-fn afn f src dst)]
     (typed-afn)))
 
+(defn dual-map-values
+  "A higher-performance equivalent to 
+  `(into dst (map #(f (first %) (second %)) (partition 2 (interleave src1 src2))))`
+   for buffers `src1`, `src2` and `dst`, where `dst` is of a fixed size"
+  [f src1 src2 dst]
+  (let [afn (fn [_ src1 dst src2]
+              (let [ilast (dec (size src1))
+                    jlast (dec (size src2))
+                    klen (size dst)]
+                (loop [i 0
+                       j 0
+                       k 0]
+                  (if (< k klen)
+                    (let [val1 (get* src1 i)
+                          val2 (get* src2 j)
+                          fval (f val1 val2)]
+                      (set* dst k fval)
+                      (recur (if (< i ilast) (unchecked-inc i) ilast)
+                             (if (< j jlast) (unchecked-inc j) jlast)
+                             (unchecked-inc k)))
+                    dst))))
+        typed-afn (type-hint-array-fn afn f src1 src2 dst)]
+    (typed-afn)))
+
 (defn map-indexed-values
   "A higher-performance equivalent to `(into dst (map-indexed #(f %1 %2) src))`
    for buffers `src` and `dst`, where `dst` is of a fixed size"

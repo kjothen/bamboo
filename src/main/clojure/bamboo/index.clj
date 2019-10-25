@@ -72,8 +72,9 @@
 
 (defmethod to-native-types :default 
   [idx] 
-  ((np/vectorize str :otypes [:dtype/object]) 
-   (to-numpy idx)))
+  ; ((np/vectorize str :otypes [:dtype/object]) 
+  ;  (to-numpy idx))
+  (to-numpy idx))
 
 (defmethod to-native-types :objtype/datetimeindex
   [idx]
@@ -198,6 +199,17 @@
   ; TODO - deal with stepped/negative/non-zero starting indices..
   label)
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.slice_locs.html
+(defmulti slice-locs
+  "Compute slice locations for input labels"
+  (fn [idx & {:keys [start end step kind]}] (:objtype idx)))
+
+(defmethod slice-locs :default
+  [idx & {:keys [start end step kind]}]
+  [(if (nil? start) 0 (get-loc idx start))
+   (if (nil? end) (dec (:size idx)) (get-loc idx end))])
+
+
 ;;; Numeric Index
 
 ;; RangeIndex
@@ -240,50 +252,75 @@
              (select-keys a [:shape :size])))))
 
 ;;; Extensions
-(defmulti show (fn [idx max-rows max-width] (:objtype idx)))
-(defmethod show :default [idx max-rows max-width] (println idx))
-
-(defmethod show :objtype/rangeindex [idx _ _]
-  (println (format "RangeIndex(start=%d, stop=%d, step=%d)"
-                   (:start idx) (:stop idx) (:step idx))))
-
-(defmethod show :objtype/datetimeindex [idx max-rows max-width] 
-  (let [start-obj "DatetimeIndex(["
-        end-obj-tokens ["], " (format "dtype='%s', length=%d, freq=%s)"
-                                     (name (get-in idx [:data :data :dtype]))
-                                     (get-in idx [:data :data :size])
-                                     (:freq idx))]
+(defn- index->string
+  [idx objtype-str objfields-str max-rows max-width]
+  (let [start-obj (str objtype-str "([")
+        end-obj-tokens (if (some? objfields-str) 
+                         ["], " objfields-str]
+                         ["]"]) 
         elipsis "..."
-        dates (condas-> (ndarray/tolist (to-native-types idx)) $
-                        (> (count $) max-rows) (concat (take 10 $)
-                                                            [elipsis]
-                                                            (take-last 10 $)))
-        len (count dates)]
+        sep ", "
+        data (condas-> (ndarray/tolist (to-native-types idx)) $
+                       (> (count $) max-rows) (concat (take 10 $)
+                                                      [elipsis]
+                                                      (take-last 10 $)))
+        len (count data)]
     (loop [i 0
-           date-tokens [start-obj]]
+           data-tokens [start-obj]]
       (if-not (< i len)
         (let [lns (reduce (fn [[s ln-width] token]
-                            (let [width (+ ln-width (count token))
-                                  indent (spaces (if (in? token end-obj-tokens)
+                            (let [end? (in? token end-obj-tokens)
+                                  token-width (count token)
+                                  width (+ ln-width token-width)
+                                  indent (spaces (if end?
                                                    (dec (count start-obj))
                                                    (count start-obj)))]
                               (if (> width max-width)
-                                [(str s \newline indent token) 
-                                 (+ (count indent) (count token))]
-                                [(str s token) 
+                                [(str s \newline indent token)
+                                 (+ (count indent) token-width)]
+                                [(str s token)
                                  width])))
                           ["" 0]
-                          (concat date-tokens end-obj-tokens))]
-          (println (apply str (first lns))))
-          (let [dt (nth dates i)
-                elipsis? (= elipsis dt)
-                s (if elipsis?
-                    (format (str "%-" max-width "s") elipsis)
-                    (if (string? dt)
-                      (format "'%s'" dt)
-                      (format "%s" dt)))
-                sep (if elipsis?
-                      ""
-                      (if (< i (dec len)) ", " ""))]
-            (recur (inc i)
-                   (conj date-tokens s sep)))))))
+                          (concat data-tokens end-obj-tokens))]
+          (apply str (first lns)))
+        (let [datum (nth data i)
+              elipsis? (= elipsis datum)
+              s (if elipsis?
+                  (format (str "%-" max-width "s") elipsis)
+                  (if (string? datum)
+                    (format "'%s'" datum)
+                    (format "%s" datum)))
+              delimiter (if elipsis?
+                          ""
+                          (if (< i (dec len)) sep ""))]
+          (recur (inc i)
+                 (conj data-tokens (str s delimiter))))))))
+
+(defmulti show (fn [idx & args] (:objtype idx)))
+
+(defmethod show :default [idx & args] 
+  (let [{:keys [max-rows max-width]
+         :or {max-rows 100 max-width 80}} (apply array-map args)]
+    (println (index->string idx
+                            "Index"
+                            (format "dtype='%s')"
+                                    (name (get-in idx [:data :data :dtype])))
+                            max-rows
+                            max-width))))
+
+(defmethod show :objtype/rangeindex [idx & args]
+  (println (format "RangeIndex(start=%d, stop=%d, step=%d)"
+                   (:start idx) (:stop idx) (:step idx))))
+
+(defmethod show :objtype/datetimeindex [idx & args]
+  (let [{:keys [max-rows max-width]
+         :or {max-rows 100 max-width 80}} (apply array-map args)]
+    (println (index->string idx 
+                            "DatetimeIndex"
+                            (format "dtype='%s', length=%d, freq=%s)"
+                                    (name (get-in idx [:data :data :dtype]))
+                                    (get-in idx [:data :data :size])
+                                    (:freq idx))
+                            max-rows 
+                            max-width))))
+

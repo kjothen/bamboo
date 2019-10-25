@@ -14,11 +14,13 @@
 (defn array? [a] (= :objtype/extension-array (:objtype a)))
 (defn ndarray? [a]
   (in? (:dtype a) #{:dtype/bool :dtype/float64 :dtype/int64 :dtype/object}))
+(defn mask? [a] (= :dtype/bool (:dtype a)))
 
 (defn- from-numpy [a]
   {:objtype :objtype/extension-array
    :dtype :dtype/bamboo
    :data a
+   :size (:size a)
    :shape [(:size a) nil]})
 
 ;;; Interface
@@ -68,8 +70,9 @@
                 :or {allow-fill false}}]
   (if (int? indices)
     (array [(item a indices)])
-    (let [_indices (ndarray/tolist (to-numpy (array indices :copy false)))]
-      (array (np/take* (to-numpy a) _indices)))))
+    (let [_indices (to-numpy (array indices :copy false))]
+      (array (np/take* (to-numpy a) (ndarray/tolist _indices))))))
+            
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.to_numpy.html
 (defn to-numpy

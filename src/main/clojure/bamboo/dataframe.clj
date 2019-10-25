@@ -2,7 +2,8 @@
   (:require [clojure.string :as string]
             [io.aviso.ansi :as ansi]
             [taoensso.tufte :as tufte]
-            [bamboo.utility :refer [array-zipmap condas-> in?
+            [bamboo.lang :refer [slice?]]
+            [bamboo.utility :refer [array-zipmap condas-> dots in?
                                     scalar? spaces to-vector]]
             [bamboo.array :as array]
             [bamboo.index :as index]
@@ -29,6 +30,9 @@
                                (array/iter data))
      :else (mapv #(array/array % :copy copy) data))
    :dtype :dtype/object :copy false))
+
+;;; Forward Declarations
+(declare take*)
 
 ;;; Constructor
 
@@ -70,8 +74,13 @@
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iloc.html
 (defn iloc
   "Purely integer-location based indexing for selection by position"
-  ([df index] (array/array (map #(iat df index %) 
-                                (range (second (:shape df))))))
+  ([df index] 
+   (cond
+     (scalar? index) (array/array (map #(iat df index %)
+                                       (range (second (:shape df)))))
+     (array/ndarray? index) (let [indices (keep-indexed #(when (true? %2) %1)
+                                                        (ndarray/tolist index))]
+                              (take* df indices))))
   ([df index column] (iat df index column)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.at.html
@@ -89,13 +98,11 @@
    (let [label-type-fn (fn [label index]
                          (cond
                            (scalar? label) :label
-                           (and (map? label)
-                                (= :objtype/slice (:objtype label))) :slice
-                           (and (sequential? label)
-                                (= (count label) (:size index))
-                                (every? boolean? label)) :mask
-                           (sequential? label) :labels
-                           (fn? label) :callable))
+                           (array/mask? label) :mask
+                           (array/ndarray? label) :labels
+                           (fn? label) :callable
+                           (slice? label) :slice
+                           (sequential? label) :labels))
          index-label-type (label-type-fn index-label (:index df))
          column-label-type (label-type-fn column-label (:columns df))]
      (when-not (or index-label-type column-label-type)
@@ -107,12 +114,25 @@
      (let [m (case index-label-type
                :label (vector (index/get-loc (:index df) index-label))
                :labels (map #(index/get-loc (:index df) %) index-label)
-               nil)
+               :slice (let [[start end]
+                            (index/slice-locs (:index df)
+                                              :start (:start index-label)
+                                              :end (:end index-label))]
+                        (range start (inc end)))
+               :mask (ndarray/tolist (np/flatnonzero index-label))
+               nil)         
            mvals (when (some? m) (array/take* (index/array (:index df)) m))
            n (case column-label-type
                :label (vector (index/get-loc (:columns df) column-label))
                :labels (map #(index/get-loc (:columns df) %) column-label)
+               :slice (let [[start end]
+                            (index/slice-locs (:columns df)
+                                              :start (:start column-label)
+                                              :end (:end column-label))]
+                        (range start (inc end)))
+               :mask (ndarray/tolist (np/flatnonzero column-label))
                nil)
+           _ (println column-label-type n)
            nvals (when (some? n) (array/take* (index/array (:columns df)) n))
            data (condas-> (:data df) $
                           (some? n) (array/take* $ n)
@@ -281,46 +301,114 @@
   [df & {:keys [buf columns col-space header index
                 na-rep formatters float-format sparsify index-names justify
                 max-rows max-cols show-dimensions decimal line-width]
-         :or {header true index true na-rep "NaN" index-names true 
-              show-dimensions false decimal \. col-space 1}}]
-  (let [df'
-        (condas->
-         df $
-         (some? columns) (take* $ (map #(index/get-loc (:columns df) %) columns)
-                                :axis 1)
-         (some? max-cols) (take* $ (range (min max-cols (second (:shape $))))
-                                 :axis 1)
-         (some? max-rows) (take* $ (range (min max-rows (first (:shape $))))
-                                 :axis 0))
+         :or {header true index true na-rep "NaN" index-names true
+              show-dimensions false decimal \. col-space 2}}]
+  (let [range-split-fn (fn [idx maximum]
+                         (let [n (:size idx)]
+                           (when (> n maximum)
+                             (if (= 1 maximum)
+                               {:range (range 1) :split 1}
+                               (let [front (range (long (/ maximum 2)))
+                                     back (range (- n (long (/ maximum 2))) n)]
+                                 {:range (concat front back)
+                                  :split (count front)})))))
+        df-columns (if (some? columns)
+                     (take* df (map #(index/get-loc (:columns df) %) columns)
+                            :axis 1)
+                     df)
+        col-splits (when (some? max-cols)
+                     (range-split-fn (:columns df-columns) max-cols))
+        row-splits (when (some? max-rows)
+                     (range-split-fn (:index df-columns) max-rows))
+        df' (condas-> df-columns $
+                      (some? col-splits) (take* $ (:range col-splits) :axis 1)
+                      (some? row-splits) (take* $ (:range row-splits) :axis 0))
         df-strs (applymap df' str :otype :dtype/object)
         idx-strs (ndarray/tolist (index/to-native-types (:index df-strs)))
-        idx-width (apply max (map count idx-strs))
+        idx-width (inc (max col-space 
+                            (apply max (map (comp count str) idx-strs))))
         col-strs (as-> df-strs $
                    (index/to-native-types (:columns $))
                    (ndarray/tolist $)
                    (cons (spaces idx-width) $))
         col-widths (as-> df-strs $
-                     (applymap $ count :otype :dtype/int64)
+                     (applymap $ #(max col-space (count %)) :otype :dtype/int64)
                      (map #(long (np/amax (a2n %))) (array/iter (:data $)))
                      (map-indexed #(max (count (nth col-strs (inc %1))) %2) $)
                      (cons idx-width $))
         records (itertuples df-strs)
-        col-fn (fn [fmt width s] (fmt (format (str "%-" width "s") s)))
-        line-fn (fn [coll ffmt fmt]
-                  (let [cols (map-indexed (fn [i v]
-                                            (let [fmt (if (zero? i) ffmt fmt)
-                                                  width (nth col-widths i)]
-                                              (col-fn fmt width v)))
-                                          coll)
-                        line (string/join (spaces col-space) cols)]
+        col-fn (fn [fmt align width s] 
+                 (fmt (format (str "%" align width "s") s)))
+        line-fn (fn [coll widths ffmt fmt falign align]
+                  (let [cols (map-indexed 
+                              (fn [i v]
+                                (let [_fmt (if (zero? i) ffmt fmt)
+                                      _align (if (zero? i) falign align)
+                                      width (nth widths i)]
+                                  (col-fn _fmt _align width v)))
+                              coll)
+                        line (string/join " " cols)]
                     (if (some? line-width)
                       (subs line 0 (min (ansi/visual-length line) line-width))
                       line)))
-        headers (line-fn col-strs ansi/bold-white ansi/bold-white)
-        body (map-indexed (fn [i m]
-                            (let [coll (cons (nth idx-strs i) (vals m))]
-                              (line-fn coll ansi/bold-white identity)))
-                          (array/iter records))]
-    (str headers \newline (string/join \newline body))))
+        split-line-fn (fn [split-idx coll widths ffmt fmt falign align]
+                        (let [front (line-fn (take (max 2 (inc split-idx)) coll)
+                                             (take (max 2 (inc split-idx)) widths)
+                                             ffmt fmt falign align)
+                              back (line-fn (drop (inc split-idx) coll)
+                                            (drop (inc split-idx) widths)
+                                            fmt fmt align align)
+                              elipsis (line-fn ["  ...  "] 
+                                               [7]
+                                               ffmt fmt align align)]
+                          (if (= 1 (count coll))
+                            (str front elipsis)
+                            (str front elipsis back))))
+        col-split-idx (:split col-splits)
+        row-split-idx (:split row-splits)
+        headers (if (some? col-split-idx)
+                  (split-line-fn col-split-idx col-strs col-widths
+                                 ansi/bold-white ansi/bold-white
+                                 "-" "")
+                  (line-fn col-strs col-widths
+                           ansi/bold-white ansi/bold-white
+                           "-" ""))
+        row-fn (fn [idx-label row-strs]
+                 (let [coll (cons idx-label row-strs)]
+                   (if (some? col-split-idx)
+                     (split-line-fn col-split-idx coll col-widths
+                                    ansi/bold-white identity "-" "")
+                     (line-fn coll col-widths
+                              ansi/bold-white identity "-" ""))))
+        body (if (some? row-split-idx)
+               (let [top (map-indexed
+                          (fn [i rec] (row-fn (nth idx-strs i) (vals rec)))
+                          (take row-split-idx (array/iter records)))
+                     bottom (map-indexed
+                             (fn [i rec] (row-fn (nth idx-strs
+                                                      (+ i row-split-idx))
+                                                 (vals rec)))
+                             (drop row-split-idx (array/iter records)))
+                     elipsis [(row-fn (dots (min 3 (dec idx-width)))
+                                      (drop 1 (map #(dots (min 3 %)) 
+                                                   col-widths)))]]
+                 (if (zero? row-split-idx)
+                   (concat bottom elipsis)
+                   (concat top elipsis bottom)))
+               (map-indexed 
+                (fn [i rec] (row-fn (nth idx-strs i) (vals rec)))
+                (array/iter records)))
+        dimensions (when show-dimensions (format "[%d rows x %d columns]"
+                                                 (first (:shape df))
+                                                 (second (:shape df))))]    
+    (cond-> (str headers \newline (string/join \newline body))
+      (some? dimensions) (str \newline \newline dimensions))))
 
-(defn show [df max-rows] (println (to-string df :max-rows max-rows)))
+(defn show [df & args]
+  (let [opts (apply array-map args)]
+    (println (apply (partial to-string df) (mapcat seq opts)))))
+
+(defn expr [df e]
+  (cond 
+    (scalar? e) (array/item (:data df) (index/get-loc (:columns df) e))
+    (array/ndarray? e) (iloc df e)))

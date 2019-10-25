@@ -1,9 +1,7 @@
 (ns numcloj.core
   (:require [numcloj.api.array-manipulation :as array-manipulation]
             [numcloj.api.counting :as counting]
-            [numcloj.api.logic.array-contents :as logic.array-contents]
-            [numcloj.api.logic.comparison :as logic.comparison]
-            [numcloj.api.logic.truth :as logic.truth]
+            [numcloj.api.logic :as logic]
             [numcloj.api.searching :as searching]
             [numcloj.api.statistics :as statistics]
             [numcloj.array-buffer :as b]
@@ -77,16 +75,26 @@
 ;;; Linear algebra (numpy.linalg)
 ;;; Logic functions
 ;; Truth value testing
-(def all logic.truth/all)
-(def any logic.truth/any)
+; (def all logic.truth/all)
+; (def any logic.truth/any)
 
 ;; Array contents
-(def isnan logic.array-contents/isnan)
+(def isnan logic/isnan)
 
 ;; Array type testing
 ;; Logical operations
+(def logical-and logic/logical-and)
+(def logical-or logic/logical-or)
+(def logical-not logic/logical-not)
+
 ;; Comparison
-(def array-equal logic.comparison/array-equal)
+(def array-equal logic/array-equal)
+(def equal logic/equal)
+(def greater logic/greater)
+(def greater-equal logic/greater-equal)
+(def less logic/less)
+(def less-equal logic/less-equal)
+(def not-equal logic/not-equal)
 
 ;;; Masked array operations
 ;;; Mathematical functions

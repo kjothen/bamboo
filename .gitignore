@@ -1,10 +1,10 @@
-.DS_Store
 .cpcache/
-*.csv
-!kepler.csv.gz
-*.clx
-.nrepl-port
+.DS_Store
 .eastwood
+.ipynb_checkpoints/
+.nrepl-port
 .rebel_readline_history
+*.csv
+*.clx
 target/
 user.clj

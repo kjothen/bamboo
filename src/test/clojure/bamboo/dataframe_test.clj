@@ -1,7 +1,7 @@
 (ns bamboo.dataframe-test
   (:require [clojure.test :refer [deftest is]]
-            [bamboo.dataframe :refer [dataframe drop* equals loc sort-values 
-                                      to-string]]
+            [bamboo.dataframe :refer [dataframe drop* equals from-columns
+                                      loc sort-values to-string]]
             [bamboo.index :as index]
             [numcloj.core :as np]))
 
@@ -21,7 +21,7 @@
 (deftest dataframe-test
   (let [columns obj-index
         index int64-index
-        df (dataframe vs :columns columns :index index)]   
+        df (from-columns vs :columns columns :index index)]   
     (print-df df)
     
     ;; expected shape, columns and index 
@@ -32,32 +32,32 @@
 (deftest loc-test
   (let [columns obj-index
         index int64-index
-        df (dataframe vs :columns columns :index index)]
+        df (from-columns vs :columns columns :index index)]
     (print-df df)
 
     ;; take single index
-    (let [expected (dataframe (map #(take 1 %) vs)
+    (let [expected (from-columns (map #(take 1 %) vs)
                               :columns columns
                               :index (take 1 index))]
       (print-df df)
       (is (equals expected (loc df (first index)))))
 
     ;; take multiple indices
-    (let [expected (dataframe (map #(take 2 %) vs)
+    (let [expected (from-columns (map #(take 2 %) vs)
                               :columns columns
                               :index (take 2 index))]
       (print-df df)
       (is (equals expected (loc df (take 2 index)))))
     
     ;; take multiple index, mutliple columns
-    (let [expected (dataframe (map #(take 1 %) (take 2 vs))
+    (let [expected (from-columns (map #(take 1 %) (take 2 vs))
                               :columns (take 2 columns)
                               :index (take 1 index))]
       (print-df expected)
       (is (equals expected (loc df (first index) (take 2 columns)))))
     
     ;; take multiple indices, multiple columns
-    (let [expected (dataframe (map #(take 2 %) (take 2 vs))
+    (let [expected (from-columns (map #(take 2 %) (take 2 vs))
                               :columns (take 2 columns)
                               :index (take 2 index))]
       (print-df expected)
@@ -67,11 +67,11 @@
 (deftest drop*-test
   (let [columns obj-index
         index int64-index
-        df (dataframe vs :columns columns :index index)]
+        df (from-columns vs :columns columns :index index)]
     (print-df df)
 
     ;; drop first column
-    (let [expected (dataframe (nthrest vs 1)
+    (let [expected (from-columns (nthrest vs 1)
                               :columns (nthrest columns 1)
                               :index index)]
       (print-df expected)
@@ -80,7 +80,7 @@
 
     ;; drop last two columns
     (let [n (- (count columns) 2)
-          expected (dataframe (take n vs)
+          expected (from-columns (take n vs)
                               :columns (take n columns)
                               :index index)]
       (print-df expected)
@@ -88,7 +88,7 @@
       (is (equals expected (drop* df :columns (take-last 2 columns)))))
     
     ;; drop* first row
-    (let [expected (dataframe (mapv #(nthrest % 1) vs)
+    (let [expected (from-columns (mapv #(nthrest % 1) vs)
                               :columns columns
                               :index (nthrest index 1))]
       (print-df expected)
@@ -97,7 +97,7 @@
     
     ;; drop last two rows
     (let [m (- (count index) 2)
-          expected (dataframe (mapv #(take m %) vs)
+          expected (from-columns (mapv #(take m %) vs)
                               :columns columns
                               :index (take m index))]
       (print-df expected)
@@ -107,7 +107,7 @@
     ;; drop last two columns and last two rows
     (let [m (- (count index) 2)
           n (- (count columns) 2)
-          expected (dataframe (mapv #(take n %) (take m vs))
+          expected (from-columns (mapv #(take n %) (take m vs))
                               :columns (take m columns)
                               :index (take n index))]
       (print-df expected)
@@ -165,7 +165,7 @@
 (deftest sort-values-test
   (let [columns obj-index
         index int64-index
-        df (dataframe vs :columns columns :index index)]
+        df (from-columns vs :columns columns :index index)]
 
     ;; sort by one column
     (print-df df)

@@ -36,29 +36,33 @@
 
 ;;; Constructor
 
+(defn from-columns
+  [data & {:keys [index columns dtype copy]
+           :or {copy false}}]
+  (let [arrays (asarrays data :copy copy)
+        shape [(first (:shape (array/item arrays 0))) (first (:shape arrays))]]
+    {:objtype :objtype/dataframe
+     :data arrays
+     :dtypes (array/array (map #(:dtype (a2n %)) (array/iter arrays))
+                          :dtype :dtype/object)
+     :index (if (some? index)
+              (index/index index :copy copy)
+              (index/rangeindex (first shape)))
+     :columns (if (some? columns)
+                (index/index columns :copy copy)
+                (index/rangeindex (second shape)))
+     :shape shape}))
+
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame
 (defn dataframe
   "Two-dimensional size-mutable, potentially heterogeneous tabular data 
    structure with labeled axes (rows and columns). Arithmetic operations 
    align on both row and column labels. Can be thought of as a dict-like 
    container for Series objects. The primary pandas data structure."
-  [data & {:keys [index columns dtype copy]
-           :or {copy false}}]
-  (tufte/p
-   :bamboo/dataframe.dataframe
-   (let [arrays (asarrays data :copy copy)
-         shape [(first (:shape (array/item arrays 0))) (first (:shape arrays))]]
-     {:objtype :objtype/dataframe
-      :data arrays
-      :dtypes (array/array (map #(:dtype (a2n %)) (array/iter arrays))
-                           :dtype :dtype/object)
-      :index (if (some? index)
-               (index/index index :copy copy)
-               (index/rangeindex (first shape)))
-      :columns (if (some? columns)
-                 (index/index columns :copy copy)
-                 (index/rangeindex (second shape)))
-      :shape shape})))
+  [data & args]
+  (let [opts (apply array-map args)]
+    (apply (partial from-columns (apply map vector data))
+           (mapcat seq opts))))
 
 ;;; Attributes and underlying data
 ;;; Conversion
@@ -137,10 +141,11 @@
            data (condas-> (:data df) $
                           (some? n) (array/take* $ n)
                           (some? m) (map #(array/take* % m) (array/iter $)))]
-       (dataframe data
-                  :index (if (some? mvals) (index/index mvals) (:index df))
-                  :columns (if (some? nvals) (index/index nvals) (:columns df))
-                  :copy false)))))
+       (from-columns 
+        data
+        :index (if (some? mvals) (index/index mvals) (:index df))
+        :columns (if (some? nvals) (index/index nvals) (:columns df))
+        :copy false)))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.itertuples.html
 (defn itertuples
@@ -202,15 +207,15 @@
                             (index/drop* index locs :errors errors)
                             (if (true? inplace) index (index/copy index))))]
 
-      (dataframe (condas-> (array/to-numpy (if (true? inplace)
-                                             (:data df)
-                                             (copy-data df))) $
-                           (seq n) (np/delete (a2n $) n)
-                           (seq m) ((np/vectorize
-                                     #(np/delete (a2n %) m)) $))
-                 :index (index-drop-fn (:index df) mvals m)
-                 :columns (index-drop-fn (:columns df) nvals n)
-                 :copy false))))
+      (from-columns (condas-> (array/to-numpy (if (true? inplace)
+                                                (:data df)
+                                                (copy-data df))) $
+                              (seq n) (np/delete (a2n $) n)
+                              (seq m) ((np/vectorize
+                                        #(np/delete (a2n %) m)) $))
+                    :index (index-drop-fn (:index df) mvals m)
+                    :columns (index-drop-fn (:columns df) nvals n)
+                    :copy false))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.equals.html
 (defn equals
@@ -230,14 +235,14 @@
   "Return the elements in the given positional indices along an axis"
   [df indices & {:keys [axis is-copy] :or {axis 0 is-copy true}}]
   (case axis
-    0 (dataframe (map #(array/take* % indices) (array/iter (:data df)))
-                 :columns (cond-> (:columns df) is-copy (index/copy))
-                 :index (index/take* (:index df) indices)
-                 :copy false)
-    1 (dataframe (array/take* (:data df) indices)
-                 :columns (index/take* (:columns df) indices)
-                 :index (cond-> (:index df) is-copy (index/copy))
-                 :copy false)))
+    0 (from-columns (map #(array/take* % indices) (array/iter (:data df)))
+                    :columns (cond-> (:columns df) is-copy (index/copy))
+                    :index (index/take* (:index df) indices)
+                    :copy false)
+    1 (from-columns (array/take* (:data df) indices)
+                    :columns (index/take* (:columns df) indices)
+                    :index (cond-> (:index df) is-copy (index/copy))
+                    :copy false)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.truncate.html
 (defn truncate
@@ -263,10 +268,10 @@
    (let [m (first (:shape df))
          n (second (:shape df))
          data (mapv (fn [i] (mapv (fn [j] (iat df i j)) (range n))) (range m))]
-     (dataframe data
-                :columns (:index df)
-                :index (:columns df)
-                :copy copy))))
+     (from-columns data
+                   :columns (:index df)
+                   :index (:columns df)
+                   :copy copy))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
 (defn sort-values
@@ -286,10 +291,10 @@
           index (index/index
                  (array/take* (index/array (:index df)) indices))
           data (map #(array/take* % (a2n indices)) (array/iter (:data df)))]
-      (dataframe data
-                 :columns (:columns df)
-                 :index index
-                 :copy false))))
+      (from-columns data
+                    :columns (:columns df)
+                    :index index
+                    :copy false))))
 
 ;;; Combining / joining / merging
 ;;; Time series-related

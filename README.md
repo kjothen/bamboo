@@ -3,9 +3,13 @@ A minimal, "pandas-like" library for Clojure, implemented on numcloj, a "numpy-l
 
 ## Usage
 The main user namespaces are:
-* `bamboo.core` for creating top-level "pandas objects" (stored as Clojure maps) such as dataframes, various types of indices, etc. 
-* `bamboo.dataframe` for operating on a dataframe, eg `drop*` rows and columns, `take*` rows and columns, etc.
-* `numcloj.core` for creating and manipulating "ndarrays" (stored as native java arrays) and operating on them, eg efficiently (through type-hints) map a function over an array using `vectorize`, etc
+* `bamboo.core` for creating top-level "pandas objects" (stored as Clojure maps) 
+such as dataframes, various types of indices, etc. 
+* `bamboo.dataframe` for operating on a dataframe, eg `drop*` rows and columns, 
+`take*` rows and columns, etc.
+* `numcloj.core` for creating and manipulating "ndarrays" 
+(stored as native java arrays) and operating on them, eg efficiently 
+(through type-hints) map a function over an array using `vectorize`, etc
 * `numcloj.ndarray` for additional operations on "ndarrays"
 
 >During development, it is highly recommended that you use the clojure.spec 
@@ -48,7 +52,7 @@ df = pd.read_csv("kepler.csv.gz", skiprows=53)
 ```
 ```clojure
 ; clojure
-user=> (def df (pd/read-csv "kepler.csv.gz" :skiprows 53))
+(def df (pd/read-csv "kepler.csv.gz" :skiprows 53))
 #'user/df
 ```
 
@@ -60,7 +64,7 @@ print (df.to_string(max_cols=6, max_rows=5, show_dimensions=True))
 ```
 ```clojure
 ; clojure
-user=> (def df (pd/read-csv "kepler.csv.gz" :skiprows 53))
+(pd/show df :max-cols 6 :max-rows 5 :show-dimensions true)
 ```
 ```bash    
          kepid kepoi_name  kepler_name  ...         ra       dec koi_kepmag
@@ -194,27 +198,46 @@ print(df_interest.to_string(max_rows=4))
 nil
 ```
 
-Dataframes don't have to come from CSV files: they can be created from data too. 
 Create a dataframe from collection data, named columns, 
 and periodic datetimes for the index:
 
+```python
+# python
+dates = pd.date_range(start="2019-01-01", periods=5, freq="min")
+data = np.split(np.arange(20), 5)
+df_data = pd.DataFrame(data, columns=["w","x","y","z"], index=dates)
+print(df_data.to_string())
+```
 ```clojure
 ; clojure
-(def df (pd/dataframe (partition 5 (range 20)) 
-               :columns ["w" "x" "y" "z"] 
-                :index (pd/date-range :start "2019-01-01" 
-                                      :periods 5 
-                                      :freq "min")))
-(pd/show df)
+(def dates (pd/date-range :start "2019-01-01" :periods 5 :freq "min"))
+(def data (partition 4 (range 20)))
+(def df-data (pd/dataframe data :columns ["w" "x" "y" "z"] :index dates))
+(pd/show df-data)
 ```
 ```bash
                       w  x  y  z
-2019-01-01T00:00:00   0  5 10 15
-2019-01-01T00:01:00   1  6 11 16
-2019-01-01T00:02:00   2  7 12 17
-2019-01-01T00:03:00   3  8 13 18
-2019-01-01T00:04:00   4  9 14 19
+2019-01-01T00:00:00   0  1  2  3
+2019-01-01T00:01:00   4  5  6  7
+2019-01-01T00:02:00   8  9 10 11
+2019-01-01T00:03:00  12 13 14 15
+2019-01-01T00:04:00  16 17 18 19
 nil
+```
+
+Show the datetime index:
+```python
+# python
+df_data.index 
+```
+```clojure
+; clojure
+(pd/show (:index df-data))
+```
+```bash
+DatetimeIndex(['2019-01-01T00:00:00', '2019-01-01T00:01:00', 
+               '2019-01-01T00:02:00', '2019-01-01T00:03:00', 
+               '2019-01-01T00:04:00'], dtype='int64', freq='min')
 ```
 
 ## Testing

@@ -317,9 +317,8 @@
          :or {max-rows 100 max-width 80}} (apply array-map args)]
     (println (index->string idx 
                             "DatetimeIndex"
-                            (format "dtype='%s', length=%d, freq=%s)"
+                            (format "dtype='%s', freq='%s')"
                                     (name (get-in idx [:data :data :dtype]))
-                                    (get-in idx [:data :data :size])
                                     (:freq idx))
                             max-rows 
                             max-width))))

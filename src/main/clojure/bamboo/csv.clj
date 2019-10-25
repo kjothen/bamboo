@@ -150,6 +150,5 @@
                  :comment* comment*})
           header? (int? header)
           columns (column-names rows header? names prefix)
-          data (if header? (rest rows) rows)
-          transposed (apply map vector (pad-rows data (count columns)))]
-      (dataframe/dataframe transposed :columns columns))))
+          data (if header? (rest rows) rows)]
+      (dataframe/dataframe (pad-rows data (count columns)) :columns columns))))

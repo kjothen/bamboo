@@ -60,7 +60,7 @@ print (df.to_string(max_cols=6, max_rows=5, show_dimensions=True))
 ```
 ```clojure
 ; clojure
-user=> (pd/show df :max-cols 6 :max-rows 4 :show-dimensions true)
+user=> (def df (pd/read-csv "kepler.csv.gz" :skiprows 53))
 ```
 ```bash    
          kepid kepoi_name  kepler_name  ...         ra       dec koi_kepmag
@@ -104,11 +104,13 @@ Show data for specific columns:
 
 ```python
 # python
-print (df.to_string(columns=['kepid', 'kepoi_name', 'kepler_name', 'koi_disposition', 'koi_score'], max_rows=4))
+cols = ['kepid', 'kepoi_name', 'kepler_name', 'koi_disposition', 'koi_score']
+print (df.to_string(columns=cols, max_rows=4))
 ```
 ```clojure
 ; clojure
-(pd/show df :columns ["kepid" "kepoi_name" "kepler_name" "koi_disposition", "koi_score"] :max-rows 4)
+(def cols ["kepid" "kepoi_name" "kepler_name" "koi_disposition", "koi_score"])
+(pd/show df :columns cols :max-rows 4)
 ```
 ```bash
          kepid kepoi_name  kepler_name koi_disposition koi_score
@@ -124,16 +126,17 @@ Select confirmed exoplanets with a disposition score equal to 1.0:
 
 ```python
 # python
+cols = ['kepid', 'kepoi_name', 'kepler_name', 'koi_pdisposition', 'koi_score', 'koi_period']
 df_confirmed = df[(df["koi_disposition"] == "CONFIRMED") & (df["koi_score"] == 1.0)]
-print (df_confirmed.to_string(columns=['kepid', 'kepoi_name', 'kepler_name', 'koi_pdisposition', 'koi_score', 'koi_period'], max_rows=4))
+print (df_confirmed.to_string(columns=cols, max_rows=4))
 ```
 ```clojure
 ; clojure
-(require '[bamboo.dataframe :as dataframe])
-(let [dfx (partial dataframe/expr df)
+(let [cols ["kepid" "kepoi_name" "kepler_name" "koi_disposition", "koi_score"]
+      dfx (partial dataframe/expr df)
       cond1 (pd/equal (dfx "koi_disposition") "CONFIRMED")
       cond2 (pd/equal (dfx "koi_score") 1.0)]
-  (pd/show (dfx (pd/logical-and cond1 cond2)) :columns ["kepid" "kepoi_name" "kepler_name" "koi_disposition", "koi_score"] :max-rows 4))
+  (pd/show (dfx (pd/logical-and cond1 cond2)) :columns cols :max-rows 4))
 ```
 ```bash
          kepid kepoi_name   kepler_name koi_disposition koi_score
@@ -167,7 +170,9 @@ Take rows and columns of interest:
 
 ```python
 # python
-df_interest = df.loc[(df["koi_disposition"] == "CONFIRMED") & (df["koi_score"] == 1.0), 'kepid':'koi_score']
+cond1 = df["koi_disposition"] == "CONFIRMED"
+cond2 = df["koi_score"] == 1.0
+df_interest = df.loc[cond1 & cond2, 'kepid':'koi_score']
 print(df_interest.to_string(max_rows=4))
 ```
 ```clojure
@@ -179,6 +184,15 @@ print(df_interest.to_string(max_rows=4))
     (dataframe/loc df (pd/logical-and cond1 cond2) (slice :end "koi_score"))))
 (pd/show df-interest :max-rows 4)
 ```
+```
+         kepid kepoi_name   kepler_name koi_disposition koi_pdisposition koi_score
+0     10797460  K00752.01  Kepler-227 b       CONFIRMED        CANDIDATE       1.0
+4     10854555  K00755.01  Kepler-664 b       CONFIRMED        CANDIDATE       1.0
+...        ...        ...           ...             ...              ...       ...
+7612  11125797  K03371.02 Kepler-1482 b       CONFIRMED        CANDIDATE       1.0
+8817   7350067  K06863.01 Kepler-1646 b       CONFIRMED        CANDIDATE       1.0
+nil
+```
 
 Dataframes don't have to come from CSV files: they can be created from data too. 
 Create a dataframe from collection data, named columns, 
@@ -186,22 +200,22 @@ and periodic datetimes for the index:
 
 ```clojure
 ; clojure
-user=> (def df (pd/dataframe (partition 5 (range 20)) 
-                :columns ["w" "x" "y" "z"] 
+(def df (pd/dataframe (partition 5 (range 20)) 
+               :columns ["w" "x" "y" "z"] 
                 :index (pd/date-range :start "2019-01-01" 
                                       :periods 5 
                                       :freq "min")))
-#'user/df
-user=> (pd/show df)
-                    w x y  z 
-2019-01-01T00:00:00 0 5 10 15
-2019-01-01T00:01:00 1 6 11 16
-2019-01-01T00:02:00 2 7 12 17
-2019-01-01T00:03:00 3 8 13 18
-2019-01-01T00:04:00 4 9 14 19
+(pd/show df)
+```
+```bash
+                      w  x  y  z
+2019-01-01T00:00:00   0  5 10 15
+2019-01-01T00:01:00   1  6 11 16
+2019-01-01T00:02:00   2  7 12 17
+2019-01-01T00:03:00   3  8 13 18
+2019-01-01T00:04:00   4  9 14 19
 nil
 ```
 
 ## Testing
 `clj -A:test`
-

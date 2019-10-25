@@ -8,3 +8,4 @@
 
 (defn slice? [m] (= :objtype/slice (:objtype m)))
 (defn array-expr? [m] (= :objtype/array-expr (:objtype m)))
+

@@ -2,6 +2,7 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [squeezer.core :as squeezer]
             [taoensso.tufte :as tufte]
             [bamboo.dataframe :as dataframe]
             [bamboo.utility :refer [condas-> in? nan? parse-long to-vector]]))
@@ -73,7 +74,7 @@
                        (pos? skipfooter) (drop-last skipfooter $)
                        (true? skip-blank-lines) (skip-blank-lines-fn $)
                        (char? comment*) (comment-fn $)
-                       (and (int? nrows) (pos? nrows)) (take nrows $))
+                       (and (int? nrows) (pos? nrows)) (take (inc nrows) $))
         header-row (when header (map header-fn (nth rows header)))
         data-rows (pmap row-fn (if header (nthrest rows (inc header)) rows))]
     (if header
@@ -132,7 +133,7 @@
   ;       quoting, doublequote, escapechar, encoding, dialect,
   ;       error-bad-lines, warn-bad-lines, delim-whitespace, low-memory,
   ;       memory-map, float-precsion
-  (with-open [reader (io/reader filepath-or-buffer)]
+  (with-open [reader (squeezer/reader-compr filepath-or-buffer)]
     (let [rows (read-rows
                 reader sep quote-char
                 {:header header
@@ -140,7 +141,7 @@
                  :nrows nrows
                  :true-values (set true-values)
                  :false-values (set false-values)
-                 :na-values (na-value-filter 
+                 :na-values (na-value-filter
                              na-values keep-default-na na-filter)
                  :skiprows skiprows
                  :skipfooter skipfooter

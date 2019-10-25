@@ -5,7 +5,7 @@
                                           rand-samples invert-samples
                                           samples->mask ]]
             [numcloj.api.array-manipulation :refer [copyto delete]]
-            [numcloj.api.logic.comparison :refer [array-equal]]
+            [numcloj.api.logic :refer [array-equal]]
             [numcloj.array-creation :refer [asarray copy empty*]]))
 
 ;; fixtures

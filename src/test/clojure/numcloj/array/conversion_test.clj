@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is use-fixtures]]
             [numcloj.test-utility :refer [as array-fixture vs
                                           rand-sample random-values]]
-            [numcloj.api.logic.comparison :as comparison]
+            [numcloj.api.logic :as logic]
             [numcloj.array-creation :refer [asarray empty*]]
             [numcloj.array.conversion :refer [copy fill item itemset]]
             [numcloj.utility :refer [nan=]]))
@@ -34,7 +34,7 @@
   (let [expected (mapv copy @as)]
     (doall (map-indexed
             (fn [i a]
-              (is (comparison/array-equal (nth expected i) a)))
+              (is (logic/array-equal (nth expected i) a)))
             @as))))
 
 (deftest fill-test
@@ -44,7 +44,7 @@
             (fn [i [k _]]
               (let [a (empty* size :dtype k)]
                 (fill a (nth expected i))
-                (is (comparison/array-equal
+                (is (logic/array-equal
                      (asarray (repeat size (nth expected i)))
                      a))))
             vs))))

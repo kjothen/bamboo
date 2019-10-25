@@ -16,6 +16,7 @@
 (defn scalar? [x] ((some-fn int? double? boolean? string?) x))
 
 (defn spaces [n] (apply str (repeat n \ )))
+(defn dots [n] (apply str (repeat n \.)))
 
 (defn parse-long [s]
   (tufte/p

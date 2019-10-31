@@ -128,7 +128,7 @@
 
 (defn date-range
   "Return a fixed frequency datetimeindex"
-  [& {:keys [start end periods freq tz normalize name closed] :as all}]
+  [& {:keys [start end periods freq tz normalize name* closed] :as all}]
   (let [start' (when (some? start) (parse-date start tz))
         end' (when (some? end) (parse-date end tz))
         method-keys (select-keys all [:start :end :freq :periods])

@@ -1,7 +1,7 @@
 (ns bamboo.array
   (:require [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]
-            [bamboo.utility :refer [in?]]))
+            [bamboo.objtype :refer [array? ndarray?]]))
 
 ;;;; An extension array for ndarrays
 
@@ -11,17 +11,21 @@
 (declare copy)
 (declare to-numpy)
 
-(defn array? [a] (= :objtype/extension-array (:objtype a)))
-(defn ndarray? [a]
-  (in? (:dtype a) #{:dtype/bool :dtype/float64 :dtype/int64 :dtype/object}))
 (defn mask? [a] (= :dtype/bool (:dtype a)))
 
 (defn- from-numpy [a]
   {:objtype :objtype/extension-array
-   :dtype :dtype/bamboo
+   :dtype (:dtype a)
    :data a
    :size (:size a)
    :shape [(:size a) nil]})
+
+(defn- from-object [a]
+  {:objtype :objtype/extension-array
+   :dtype (:dtype a)
+   :data a
+   :size 1
+   :shape [1 nil]})
 
 ;;; Interface
 

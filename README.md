@@ -20,7 +20,8 @@ the unchecked versions for improved performance.
 | SciPy Libraries (Python) | Bamboo Libraries (Clojure) | Supported Operations |
 | - | - | - |
 | `pandas` | `bamboo.core` | `array, dataframe, date-range, index, rangeindex, read-csv` |
-| `pandas.DataFrame` | `bamboo.dataframe` | `applymap, at, drop*, equals, iat, iloc, itertuples, loc,     sort-values, take*, to-string, transpose`  |
+| `pandas.DataFrame` | `bamboo.dataframe` | `applymap, at, drop*, equals, iat, iloc, itertuples, loc, sort-values, take*, to-string, transpose`  |
+| `pandas.Series` | `bamboo.series` | `at, copy, iat, iloc, item, items, iter, iteritems, keys*, loc, to-list, to-numpy, take*`  |
 | `pandas.Index` | `bamboo.index` | `array, copy, drop*, dtypes, equals, get-loc, map*, slice-locs, T, take*, to-list, to-native-types,  to-numpy` |
 | `numpy` | `numcloj.core` | `amax, argmax, argmin, argsort, array, array-equal, asarray, copy, copyto, count-nonzero, delete, empty*, empty-like, equal, flatnonzero, frombuffer, full, full-like, greater, greater-equal, isnan, less, less-equal, logical-and, logical-not, logical-or, not-equal, ones, ones-like, put, recarray, rec.fromarrays, take*, vectorize, zeros, zeros-like` |
 | `numpy.ndarray` | `numcloj.ndarray` | `argsort, copy, fill, item, itemset, put, take*, tolist` |
@@ -108,12 +109,12 @@ Show data for specific columns:
 
 ```python
 # python
-cols = ['kepid', 'kepoi_name', 'kepler_name', 'koi_disposition', 'koi_score']
+cols = ['kepid', 'kepoi_name', 'kepler_name', 'koi_disposition' 'koi_score']
 print (df.to_string(columns=cols, max_rows=4))
 ```
 ```clojure
 ; clojure
-(def cols ["kepid" "kepoi_name" "kepler_name" "koi_disposition", "koi_score"])
+(def cols ["kepid" "kepoi_name" "kepler_name" "koi_disposition" "koi_score"])
 (pd/show df :columns cols :max-rows 4)
 ```
 ```bash
@@ -239,6 +240,8 @@ DatetimeIndex(['2019-01-01T00:00:00', '2019-01-01T00:01:00',
                '2019-01-01T00:02:00', '2019-01-01T00:03:00', 
                '2019-01-01T00:04:00'], dtype='int64', freq='min')
 ```
+## Run examples
+`clj -C:examples -m examples`
 
 ## Testing
 `clj -A:test`

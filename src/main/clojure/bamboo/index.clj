@@ -1,6 +1,7 @@
 (ns bamboo.index
-  (:require [bamboo.array :as array]
-            [bamboo.objtype :as objtype]
+  (:require [clojure.set :refer [union]]
+            [bamboo.array :as array]
+            [bamboo.objtype :as objtype :refer [any-index? datetimeindex? rangeindex?]]
             [bamboo.utility :refer [condas-> in? spaces to-vector]]
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray])
@@ -17,15 +18,13 @@
 (declare to-list)
 (declare to-native-types)
 (declare to-numpy)
-
-(defn- any-index? [a] (isa? objtype/bamboo-hierarchy (:objtype a) :objtype/index))
-(defn- datetimeindex? [a] (= :objtype/datetimeindex (:objtype a)))
+(declare rangeindex)
 
 (defn- hash-values
   "Hash an arrray"
   [a]
   ; TODO - non-unique indices
-  (zipmap (to-list a) (range (first (:shape a)))))
+  (zipmap (array/iter a) (range (first (:shape a)))))
 
 ;;; Index
 (defn index
@@ -123,11 +122,10 @@
 ;https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.copy.html
 (defmulti copy
   "Make a copy of this object"
-  :objtype)
+  (fn [idx & {:keys [name* deep dtype] :or {deep true}}] (:objtype idx)))
 
 (defmethod copy :default
-  [idx & {:keys [name* deep dtype]
-          :or {deep true}}]
+  [idx & {:keys [name* deep dtype] :or {deep true}}]
   (if (some? (:data idx))
     (update-in idx [:data] array/array :copy true)
     idx))
@@ -169,7 +167,7 @@
 (defn to-list 
   "Return a list of the values"
   [idx] 
-  ((comp ndarray/tolist array/to-numpy) idx))
+  ((comp ndarray/tolist to-numpy) idx))
 
 (defn map*
   "Map values using input correspondence (a dict, Series, or function)"
@@ -179,6 +177,27 @@
 ;; Sorting
 ;; Time-specific operations
 ;; Combining / joining / set operations
+
+; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.union.html
+(defmulti union*
+  "Form the union of two Index objects"
+  (fn [idx other & {:keys [sort*]}] (:objtype idx)))
+
+(defmethod union* :default
+  [idx other & {:keys [sort*]}]
+  (index (vec (apply sorted-set (union (to-list idx) (to-list other))))))
+
+(defmethod union* :objtype/rangeindex
+  [idx other & {:keys [sort*]}]
+  (if (and (rangeindex? other)
+           (= (:step idx) (:step other))
+           (or (<= (:start idx) (:stop other))
+               (<= (:start other) (:stop idx))))
+    (rangeindex (min (:start idx) (:start other))
+                :stop (max (:stop idx) (:stop other))
+                :step (:step idx))
+    (index (vec (apply sorted-set (union (to-list idx) (to-list other)))))))
+
 ;; Selecting
 
 ; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.get_loc.html#pandas.Index.get_loc
@@ -196,7 +215,7 @@
 
 (defmethod get-loc :objtype/rangeindex
   [idx label & {:keys [method tolerance]}]
-  ; TODO - deal with stepped/negative/non-zero starting indices..
+  (+ (:start idx) (* label (:step idx)))
   label)
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Index.slice_locs.html

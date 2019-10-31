@@ -8,7 +8,7 @@
   (let [data [nil Double/NaN "a" 1 true 42.7]
         arr (array data)]
     (is (= {:objtype :objtype/extension-array 
-            :dtype :dtype/bamboo
+            :dtype :dtype/object
             :shape [6 nil]}
            (select-keys arr [:objtype :dtype :shape])))
     (is (true? (np/array-equal data (to-numpy arr))))

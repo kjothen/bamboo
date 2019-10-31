@@ -3,8 +3,9 @@
             [bamboo.array :as array]
             [bamboo.csv :as csv]
             [bamboo.dataframe :as dataframe]
-            [bamboo.index :as index]
             [bamboo.date-range :as date-range]
+            [bamboo.index :as index]
+            [bamboo.series :as series]
             [numcloj.core :as np]))
 
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.23/api.html
@@ -64,7 +65,7 @@
             *print-length* *show-length*] 
     (clojure.pprint/pprint m)))
 
-; (defmethod show :objtype/array [a & args]
+; (defmethod show :objtype/extension-array [a & args]
 ;   (apply (partial array/show df)
 ;          (list* :max-rows *show-length* args)))
 
@@ -90,6 +91,7 @@
 (defmulti to-numpy :objtype)
 (defmethod to-numpy :default [x] x)
 (defmethod to-numpy :objtype/extension-array [a] (array/to-numpy a))
+(defmethod to-numpy :objtype/series [a] (series/to-numpy a))
 
 (defn logical-and [x y] (np/logical-and (to-numpy x) (to-numpy y)))
 (defn logical-or [x y] (np/logical-or (to-numpy x) (to-numpy y)))
@@ -98,4 +100,3 @@
 (defn greater-equal [x y] (np/greater-equal (to-numpy x) (to-numpy y)))
 (defn less [x y] (np/less (to-numpy x) (to-numpy y)))
 (defn less-equal [x y] (np/less-equal (to-numpy x) (to-numpy y)))
-

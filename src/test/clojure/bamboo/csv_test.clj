@@ -7,7 +7,7 @@
             [bamboo.index :as index]
             [numcloj.core :as np]))
 
-(defn print-df [df] (do (println) (println (dataframe/to-string df))))
+(defn print-df [df] (println) (println (dataframe/to-string df)))
 
 (deftest header-tests
   (testing (str "Given CSV files with headers on zeroth row, nth row "
@@ -25,6 +25,7 @@
                                   :prefix "X")
           expected-prefix (mapv str (repeat "X")
                                 (range (second (:shape df-prefix))))]
+      (println df-zero)
       (print-df df-zero)
       (print-df df-one)
       (is (dataframe/equals df-zero df-one))
@@ -32,7 +33,8 @@
       (is (dataframe/equals df-zero df-none))
       (print-df df-prefix)
       (is (np/array-equal expected-prefix 
-                          (index/to-numpy (:columns df-prefix)))))))
+                          (index/to-numpy (:columns df-prefix)))))
+    ))
 
 (deftest dtypes-tests
   (testing (str "Given a CSV file "

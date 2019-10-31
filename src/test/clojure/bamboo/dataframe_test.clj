@@ -1,6 +1,6 @@
 (ns bamboo.dataframe-test
   (:require [clojure.test :refer [deftest is]]
-            [bamboo.dataframe :refer [dataframe drop* equals from-columns
+            [bamboo.dataframe :refer [dataframe drop* equals
                                       loc sort-values to-string]]
             [bamboo.index :as index]
             [numcloj.core :as np]))
@@ -16,7 +16,13 @@
 (def bool-index [true false true false true])
 (def obj-index ["m" "n" "o" "p" "q"])
 
-(defn print-df [df] (do (println) (println (to-string df))))
+(defn print-df [df] (println) (println (to-string df)))
+
+(defn from-columns [data & {:keys [columns index]}]
+  (dataframe
+   (apply map vector data)
+   :columns columns
+   :index index))
 
 (deftest dataframe-test
   (let [columns obj-index
@@ -27,7 +33,8 @@
     ;; expected shape, columns and index 
     (is (= [(count index) (count columns)] (:shape df)))
     (is (np/array-equal columns (index/to-numpy (:columns df))))
-    (is (np/array-equal index (index/to-numpy (:index df))))))
+    (is (np/array-equal index (index/to-numpy (:index df))))
+    ))
 
 (deftest loc-test
   (let [columns obj-index
@@ -39,14 +46,14 @@
     (let [expected (from-columns (map #(take 1 %) vs)
                               :columns columns
                               :index (take 1 index))]
-      (print-df df)
+      (print-df expected)
       (is (equals expected (loc df (first index)))))
 
     ;; take multiple indices
     (let [expected (from-columns (map #(take 2 %) vs)
                               :columns columns
                               :index (take 2 index))]
-      (print-df df)
+      (print-df expected)
       (is (equals expected (loc df (take 2 index)))))
     
     ;; take multiple index, mutliple columns

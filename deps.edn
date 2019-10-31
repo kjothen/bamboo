@@ -11,6 +11,8 @@
  {:nrepl
   {:extra-deps {nrepl {:mvn/version "RELEASE"}}
    :main-opts ["-m" "nrepl.cmdline"]}
+  :examples
+  {:extra-paths ["src/examples/clojure"]}
   :test
   {:extra-paths ["src/test/clojure" "src/test/resources"]
    :extra-deps {com.cognitect/test-runner

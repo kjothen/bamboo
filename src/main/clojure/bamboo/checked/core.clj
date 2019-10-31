@@ -1,9 +1,9 @@
 (ns bamboo.checked.core
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]
-            [bamboo.core]
+            [bamboo.checked.base :as base]
             [bamboo.checked.dataframe :as dataframe]
-            [bamboo.utility :refer [scalar?]]))
+            [bamboo.core]))
 
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.23/api.html
 
@@ -14,15 +14,15 @@
 (s/def :read-csv/quote-char char?)
 (s/def :read-csv/header (s/or :int int? 
                               :int-list (s/coll-of int?)))
-(s/def :read-csv/names (s/coll-of scalar?))   
+(s/def :read-csv/names ::base/array-like?)   
 (s/def :read-csv/usecols char?)
 (s/def :read-csv/prefix char?)
-(s/def :read-csv/true-values (s/coll-of scalar?))
-(s/def :read-csv/false-values (s/coll-of scalar?))
+(s/def :read-csv/true-values ::base/array-like?)
+(s/def :read-csv/false-values ::base/array-like?)
 (s/def :read-csv/nrows nat-int?)
-(s/def :read-csv/na-values (s/coll-of string?))
+(s/def :read-csv/na-values ::base/array-like?)
 (s/def :read-csv/keep-default-na boolean?)
-(s/def :read-csv/na-filter (s/coll-of scalar?))
+(s/def :read-csv/na-filter ::base/array-like?)
 (s/def :read-csv/skiprows nat-int?)
 (s/def :read-csv/skipfooter nat-int?)
 (s/def :read-csv/skip-blank-lines boolean?)
@@ -30,7 +30,7 @@
 (s/def :read-csv/comment* char?)
 
 (s/fdef bamboo.core/read-csv
-  :args (s/cat :filepath-or-buffer string?
+  :args (s/cat :filepath-or-buffer :read-csv/filepath-or-buffer
                :kwargs (s/keys* :opt-un
                                 [:read-csv/sep
                                  :read-csv/quote-char
@@ -55,6 +55,24 @@
 
 ;;; General functions
 ;; Top-level dealing with datetimelike
+(s/def :date-range/start ::base/datetime-like?)
+(s/def :date-range/end ::base/datetime-like?)
+(s/def :date-range/periods nat-int?)
+(s/def :date-range/tz string?)
+(s/def :date-range/normalize boolean?)
+(s/def :date-range/name* string?)
+(s/def :date-range/closed boolean?)
+
+(s/fdef bamboo.core/date-range
+  :args (s/cat :kwargs (s/keys* :opt-un
+                                [:date-range/start
+                                 :date-range/end
+                                 :date-range/periods
+                                 :date-range/tz
+                                 :date-range/normalize
+                                 :date-range/name*
+                                 :date-range/closed])))
+(stest/instrument `bamboo.core/date-range)
 (def date-range bamboo.core/date-range)
 
 ;;; Series
@@ -87,4 +105,14 @@
 ;;; General utility functions
 ;;; Extensions
 (def array bamboo.core/array)
-(defmulti show :default)
+
+;;; Clojure Extensions
+(def show bamboo.core/show)
+
+(def logical-and bamboo.core/logical-and)
+(def logical-or bamboo.core/logical-or)
+(def equal bamboo.core/equal)
+(def greater bamboo.core/greater)
+(def greater-equal bamboo.core/greater-equal)
+(def less bamboo.core/less)
+(def less-equal bamboo.core/less-equal)

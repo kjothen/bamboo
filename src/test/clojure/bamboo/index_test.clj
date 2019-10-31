@@ -3,7 +3,6 @@
             [bamboo.array :as array]
             [bamboo.core :as pd]
             [bamboo.index :refer [index rangeindex to-native-types to-numpy]]
-            ; [numcloj.ndarray :as ndarray]
             [numcloj.core :as np]))
 
 (def int64-index [6 7 8 9 10])

@@ -3,18 +3,15 @@
             [clojure.spec.test.alpha :as stest]
             [bamboo.checked.base :as base]
             [bamboo.dataframe]
-            [bamboo.utility :refer [scalar?]]))
-
-(defn dataframe? [x] (= :objtype/dataframe (:objtype x)))
-(defn index? [x] (= :objtype/index (:objtype x)))
+            [bamboo.objtype :refer [dataframe? ndarray? scalar?]]))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame
 (s/def :dataframe/data (s/and 
-                        (s/every ::base/array-like)
+                        (s/every ::base/array-like?)
                         #(or (empty? %) 
                              (apply = (map count %)))))
-(s/def :dataframe/index (s/coll-of scalar?))
-(s/def :dataframe/columns (s/coll-of scalar?))
+(s/def :dataframe/index ::base/array-like?)
+(s/def :dataframe/columns ::base/array-like?)
 (s/def :dataframe/dtype
   #{:dtype/bool :dtype/float64 :dtype/int64 :dtype/object})
 (s/def :dataframe/copy boolean?)
@@ -29,8 +26,10 @@
 (stest/instrument `bamboo.dataframe/dataframe)
 (def dataframe bamboo.dataframe/dataframe)
 
+(def loc bamboo.dataframe/loc)
+
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
-(s/def :sort-values/by (s/or :one scalar? :many (s/coll-of scalar?)))
+(s/def :sort-values/by (s/or :one scalar? :many ::base/array-like?))
 (s/def :sort-values/axis (s/int-in 0 1))
 (s/def :sort-values/ascending boolean?)
 (s/def :sort-values/inplace boolean?)
@@ -51,7 +50,7 @@
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_string.html
 (s/def :to-string/buf #(instance? % java.io.Writer))
-(s/def :to-string/columns (s/coll-of scalar?))
+(s/def :to-string/columns ::base/array-like?)
 (s/def :to-string/col-space nat-int?)
 (s/def :to-string/header boolean?)
 (s/def :to-string/index boolean?)
@@ -91,3 +90,10 @@
 (stest/instrument `bamboo.dataframe/to-string)
 (def to-string bamboo.dataframe/to-string)
 
+;;; Clojure Extensions
+(s/def :expr/e (s/or :one scalar? :many ndarray?))
+(s/fdef bamboo.dataframe/expr
+  :args (s/cat :df dataframe?
+               :e :expr/e))
+(stest/instrument `bamboo.dataframe/expr)
+(def expr bamboo.dataframe/expr)

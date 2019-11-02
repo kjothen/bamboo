@@ -9,3 +9,19 @@
    preserving order"
   [ks vs]
   (apply array-map (interleave ks vs)))
+
+(defn object-compare
+  "Compares two objects of any type. The sort order of types is:
+   Number, Boolean, String, Other, nil/##NaN"
+  [x y]
+  (let [xnil? (or (nan? x) (nil? x))
+        ynil? (or (nan? y) (nil? y))]
+    (cond
+      (and xnil? ynil?) 0
+      xnil? 1
+      ynil? -1
+      (= (type x) (type y)) (compare x y)
+      :else (condp instance? x
+              Boolean (if (number? y) 1 -1)
+              Number -1
+              1))))

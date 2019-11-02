@@ -1,31 +1,14 @@
 (ns numcloj.api.array-manipulation
   (:require [numcloj.api.counting :refer [count-nonzero]]
             [numcloj.array.item-manipulation :refer [put]]
-            [numcloj.array-creation :refer [asarray empty* frombuffer 
-                                            ones zeros]]
-            [numcloj.array-buffer :as b]))
+            [numcloj.array-buffer :as b]
+            [numcloj.array-creation :refer [asarray empty* empty-like 
+                                            frombuffer  ones zeros]]))
 
 ;;;; Array manipulation routines
+;;;; https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html
 
 ;;; Basic operations
-;;; Changing number of dimensions
-;;; Changing array shape
-;;; Transpose-like operations
-;;; Changing kind of array
-;;; Joining arrays
-;;; Splitting arrays
-;;; Tiling arrays
-;;; Adding and removing elements
-
-;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.unique.html#numpy.unique
-(defn unique
-  "Find the unique elements of an array"
-  [ar & {:keys [return-index return-inverse return-counts]
-         :or {return-index false return-inverse false return-counts false}}]
-  ; TODO
-)
-  
-
 ;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.copyto.html
 (defn copyto
   "Copies values from one array to another, 
@@ -38,7 +21,16 @@
          (fn [idx _] (= 1 (b/get* (:data _where) idx))) _src dst))
       (b/map-values identity _src dst))))
 
-;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.delete.html#numpy.delete
+;;; Changing array shape
+;;; Transpose-like operations
+;;; Changing number of dimensions
+;;; Changing kind of array
+;;; Joining arrays
+;;; Splitting arrays
+;;; Tiling arrays
+;;; Adding and removing elements
+
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.delete.html
 (defn delete
   "Return a new array with sub-arrays along an axis deleted. 
    For a one dimensional array, this returns those entries 
@@ -62,3 +54,11 @@
     (frombuffer (b/copy (:data _a) len) :dtype (:dtype _a))))
 
 ;;; Rearranging elements
+
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.flip.html
+(defn flip
+  "Reverse the order of elements in an array along the given axis"
+  [a & {:keys [axis]}]
+  (let [_a (asarray a)
+        r (empty-like _a)]
+    (b/reverse-values _a r)))

@@ -18,6 +18,15 @@
 (defn spaces [n] (apply str (repeat n \ )))
 (defn dots [n] (apply str (repeat n \.)))
 
+(defn front-back-split [len max-len]
+  (if (<= len max-len)
+    {:indices (range len) :split nil}
+    (if (= 1 max-len)
+      {:indices (range 1) :split 1}
+      (let [front (range (long (/ max-len 2)))
+            back (range (- len (long (/ max-len 2))) len)]
+        {:indices (concat front back) :split (count front)}))))
+
 (defn parse-long [s]
   (tufte/p
    :bamboo/utility.parse-long

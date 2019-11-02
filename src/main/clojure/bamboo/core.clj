@@ -19,6 +19,9 @@
 (def date-range date-range/date-range)
 
 ;;; Series
+;; Constructor
+(def series series/series)
+
 ;;; DataFrame
 ;; Constructor
 (def dataframe dataframe/dataframe)
@@ -71,6 +74,10 @@
 
 (defmethod show :objtype/dataframe [df & args] 
   (apply (partial dataframe/show df) 
+         (list* :max-rows *show-length* args)))
+
+(defmethod show :objtype/series [series & args]
+  (apply (partial series/show series)
          (list* :max-rows *show-length* args)))
 
 (defmethod show :objtype/datetimeindex [idx & args] 

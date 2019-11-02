@@ -2,7 +2,8 @@
   (:require [numcloj.array.conversion :refer [item]]
             [numcloj.array-creation :refer [asarray empty*]]
             [numcloj.array-buffer :as b]
-            [numcloj.functional :as f]))
+            [numcloj.functional :as f]
+            [numcloj.traits :as traits]))
 
 ;;;; Array methods
 
@@ -27,11 +28,11 @@
 (defn argsort
   "Returns the indices that would sort an array"
   [a & {:keys [axis kind order]
-        :or {axis -1 kind :stable}}]
+        :or {axis -1 kind traits/*sort-kind*}}]
   (let [len (:size a)
         indexed-a (empty* len :dtype :dtype/object)
         dst (empty* len :dtype :dtype/int64)
-        comp-fn #(compare (b/get* %1 1) (b/get* %2 1))]
+        comp-fn #(kind (b/get* %1 1) (b/get* %2 1))]
     (b/map-indexed-values #(:data (asarray [%1 %2])) a indexed-a)
     (b/sort-values (:data indexed-a) comp-fn)
     (b/map-values #(long (b/get* % 0)) indexed-a dst)

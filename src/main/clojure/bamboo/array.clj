@@ -1,17 +1,24 @@
 (ns bamboo.array
   (:require [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]
-            [bamboo.objtype :refer [array? ndarray?]]))
+            [bamboo.objtype :refer [array? mask? ndarray?]]))
 
 ;;;; An extension array for ndarrays
 
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.html
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.23/generated/pandas.api.extensions.ExtensionArray.html
 
+;;; Forward Declarations
+
 (declare copy)
 (declare to-numpy)
 
-(defn mask? [a] (= :dtype/bool (:dtype a)))
+;;; Interface
+
+(defn iter [a] (ndarray/tolist (to-numpy a)))
+(defn item [a i] (ndarray/item (to-numpy a) i))
+
+;;; Constructor
 
 (defn- from-numpy [a]
   {:objtype :objtype/extension-array
@@ -20,25 +27,6 @@
    :size (:size a)
    :shape [(:size a) nil]})
 
-(defn- from-object [a]
-  {:objtype :objtype/extension-array
-   :dtype (:dtype a)
-   :data a
-   :size 1
-   :shape [1 nil]})
-
-;;; Interface
-
-(defn from-sequence
-  [data & {:keys [dtype copy] :or {copy true}}]
-  (let [a (np/array data :dtype dtype)]
-    (from-numpy a)))
-
-(defn iter [a] (ndarray/tolist (to-numpy a)))
-(defn item [a i] (ndarray/item (to-numpy a) i))
-
-;;; Constructor
-  
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.array.html
 (defn array
   "Create an array"
@@ -47,7 +35,7 @@
     (array? values) (if copy (bamboo.array/copy values) values)
     (ndarray? values) (let [a (if copy (np/copy values) values)]
                         (from-numpy a))
-    :else (from-sequence values :copy copy)))
+    :else (from-numpy (np/array values))))
 
 ;;; Attributes
 (defn values [a] (:data a))
@@ -59,7 +47,8 @@
   "Return the indices that would sort this array" 
   [a & {:keys [ascending kind]
         :or {ascending true}}]
-  (array (np/argsort (to-numpy a)) :copy false))
+  (let [_a (np/argsort (to-numpy a))]
+    (array (if ascending _a (np/flip a)) :copy false)))
 
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.copy.html#pandas.arrays.PandasArray.copy
 (defn copy
@@ -77,7 +66,6 @@
     (let [_indices (to-numpy (array indices :copy false))]
       (array (np/take* (to-numpy a) (ndarray/tolist _indices))))))
             
-
 ;; https://pandas.pydata.org/pandas-docs/version/0.24/reference/api/pandas.arrays.PandasArray.to_numpy.html
 (defn to-numpy
   "Convert the PandasArray to a numpy.ndarray"

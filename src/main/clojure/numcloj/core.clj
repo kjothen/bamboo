@@ -8,9 +8,8 @@
             [numcloj.array-creation :as array-creation]
             [numcloj.functional :as functional]
             [numcloj.ndarray :as ndarray]
-            [numcloj.rec :as rec]))
-
-;;;; TODO! For all functions that expect array-like, wrap these before sending to ndarray
+            [numcloj.rec :as rec]
+            [numcloj.traits :as traits]))
 
 ;;;; https://docs.scipy.org/doc/numpy/reference/routines.html
 
@@ -36,9 +35,15 @@
 (def rec.fromarrays rec/fromarrays)
 
 ;;; Array manipulation routines
+;; Basic operations
 (def copyto array-manipulation/copyto)
+
+;; Adding and removing elements
 (def delete array-manipulation/delete)
 (def resize array-manipulation/resize)
+
+;; Rearranging elements
+(def flip array-manipulation/flip)
 
 ;;; Binary operations
 ;;; String operations
@@ -106,7 +111,8 @@
 ;;; Set routines
 ;;; Sorting, searching and counting
 ;; Sorting
-(defn argsort [a & {:keys [axis kind order] :or {axis -1}}]
+(defn argsort [a & {:keys [axis kind order] 
+                    :or {axis -1 kind traits/*sort-kind*}}]
   (let [_a (asarray a)]
     (if (= :dtype/record (:dtype _a))
       (rec/argsort _a :axis axis :kind kind :order order)

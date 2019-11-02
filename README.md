@@ -7,6 +7,8 @@ The main user namespaces are:
 such as dataframes, various types of indices, etc. 
 * `bamboo.dataframe` for operating on a dataframe, eg `drop*` rows and columns, 
 `take*` rows and columns, etc.
+* `bamboo.series` for operating on a series, eg `drop*` rows, 
+`take*` rows, etc.
 * `numcloj.core` for creating and manipulating "ndarrays" 
 (stored as native java arrays) and operating on them, eg efficiently 
 (through type-hints) map a function over an array using `vectorize`, etc
@@ -19,9 +21,9 @@ the unchecked versions for improved performance.
 
 | SciPy Libraries (Python) | Bamboo Libraries (Clojure) | Supported Operations |
 | - | - | - |
-| `pandas` | `bamboo.core` | `array, dataframe, date-range, index, rangeindex, read-csv` |
+| `pandas` | `bamboo.core` | `array, dataframe, date-range, index, rangeindex, read-csv, series` |
 | `pandas.DataFrame` | `bamboo.dataframe` | `applymap, at, drop*, equals, iat, iloc, itertuples, loc, sort-values, take*, to-string, transpose`  |
-| `pandas.Series` | `bamboo.series` | `at, copy, iat, iloc, item, items, iter, iteritems, keys*, loc, to-list, to-numpy, take*`  |
+| `pandas.Series` | `bamboo.series` | `at, copy, equals, iat, iloc, item, items, iter, iteritems, keys*, loc, take*, to-list, to-numpy, to-string`  |
 | `pandas.Index` | `bamboo.index` | `array, copy, drop*, dtypes, equals, get-loc, map*, slice-locs, T, take*, to-list, to-native-types,  to-numpy` |
 | `numpy` | `numcloj.core` | `amax, argmax, argmin, argsort, array, array-equal, asarray, copy, copyto, count-nonzero, delete, empty*, empty-like, equal, flatnonzero, frombuffer, full, full-like, greater, greater-equal, isnan, less, less-equal, logical-and, logical-not, logical-or, not-equal, ones, ones-like, put, recarray, rec.fromarrays, take*, vectorize, zeros, zeros-like` |
 | `numpy.ndarray` | `numcloj.ndarray` | `argsort, copy, fill, item, itemset, put, take*, tolist` |

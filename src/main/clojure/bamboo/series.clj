@@ -1,7 +1,10 @@
 (ns bamboo.series
-  (:require [bamboo.array :as array]
+  (:require [clojure.string :as string]
+            [io.aviso.ansi :as ansi]
+            [bamboo.array :as array]
             [bamboo.index :as index]
-            [bamboo.objtype :refer [ndarray? scalar? series? slice?]]
+            [bamboo.objtype :refer [mask? ndarray? scalar? series? slice?]]
+            [bamboo.utility :refer [dots front-back-split spaces]]
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]))
 
@@ -32,6 +35,7 @@
        (select-keys _array [:dtype :shape :size])))))
 
 ;;; Attributes 
+(defn array [series] (:array series))
 
 ;;; Conversion
 
@@ -78,7 +82,7 @@
   (let [label-type-fn (fn [label]
                         (cond
                           (scalar? label) :label
-                          (array/mask? label) :mask
+                          (mask? label) :mask
                           (ndarray? label) :labels
                           (fn? label) :callable
                           (slice? label) :slice
@@ -110,7 +114,7 @@
   (let [integer-type-fn (fn [i]
                           (cond
                             (int? i) :index
-                            (array/mask? i) :mask
+                            (mask? i) :mask
                             (ndarray? i) :indices
                             (fn? i) :callable
                             (slice? i) :slice
@@ -163,9 +167,57 @@
 
 ;;; Reindexing / selection / label manipulation
 
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.equals.html
+(defn equals
+  "Test whether two objects contain the same elements"
+  [series other]
+  (and (= (:shape series) (:shape other))
+       (np/array-equal (to-numpy series) (to-numpy other))))
+
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.take.html
 (defn take*
   "Return the elements in the given positional indices along an axis"
   [series indices & {:keys [axis is-copy]
                      :or {axis 0 is-copy true}}]
   (array/take* (:array series) indices))
+
+;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.to_string.html
+(defn to-string
+  [series & {:keys [buf na-rep float-format header index 
+                    length dtype name* max-rows min-rows]
+         :or {header true index true na-rep "NaN" length false}}]
+  (let [row-splits (front-back-split (:size series)
+                                     (if (some? max-rows)
+                                       max-rows
+                                       (:size series)))
+        col-strs ((np/vectorize str) (to-numpy series))
+        col-widths ((np/vectorize count) col-strs)
+        max-col-width (long (np/amax col-widths))
+        idx-strs (index/to-native-types (:index series))
+        idx-widths ((np/vectorize count) idx-strs)
+        max-idx-width (long (np/amax idx-widths))
+        row-fn (fn [indices]
+                 (map (fn [idx]
+                        (let [idx-str (format (str "%" "-" max-idx-width "s")
+                                              (ndarray/item idx-strs idx))
+                              col-str (format (str "%"  max-col-width "s")
+                                              (ndarray/item col-strs idx))]
+                          (string/join "  " [(ansi/bold idx-str) 
+                                             col-str])))
+                      indices))
+        body (if-some [split (:split row-splits)]
+               (concat (row-fn (take split (:indices row-splits)))
+                       [(string/join "  " 
+                                    [(spaces max-idx-width)
+                                     (format (str "%-" max-col-width "s") 
+                                             (dots 3))])]
+                       (row-fn (drop split (:indices row-splits))))
+               (row-fn (:indices row-splits)))
+        dimensions (when length
+                     (format "Length: %d" (:size series)))]
+    (cond-> (string/join \newline body)
+      (some? dimensions) (str \newline \newline dimensions))))
+
+(defn show [series & args]
+  (let [opts (apply array-map args)]
+    (println (apply (partial to-string series) (mapcat seq opts)))))

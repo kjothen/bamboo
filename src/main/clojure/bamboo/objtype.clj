@@ -9,8 +9,9 @@
 
 (defn ndarray? [a] 
   (in? (:dtype a) #{:dtype/bool :dtype/float64 :dtype/int64 :dtype/object}))
-
+(defn mask? [a] (= :dtype/bool (:dtype a)))
 (defn array? [a] (= :objtype/extension-array (:objtype a)))
+
 (defn dataframe? [df] (= :objtype/dataframe (:objtype df)))
 (defn series? [s] (= :objtype/series (:objtype s)))
 

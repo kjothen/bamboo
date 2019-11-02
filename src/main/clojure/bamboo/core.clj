@@ -73,6 +73,10 @@
   (apply (partial dataframe/show df) 
          (list* :max-rows *show-length* args)))
 
+(defmethod show :objtype/series [series & args]
+  (apply (partial series/show series)
+         (list* :max-rows *show-length* args)))
+
 (defmethod show :objtype/datetimeindex [idx & args] 
   (apply (partial index/show idx) 
          (list* :max-rows *show-length* :max-width *show-width* args)))

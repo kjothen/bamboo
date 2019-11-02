@@ -16,11 +16,11 @@
 (defmethod make-buffer :dtype/int64 [a] (long-array (or (:seq a) (:size a))))
 
 (defmulti dtype class)
-(defmethod dtype :default [a] :dtype/object)
-(defmethod dtype (Class/forName "[Z") [a] :dtype/bool)
-(defmethod dtype (Class/forName "[D") [a] :dtype/float64)
-(defmethod dtype (Class/forName "[J") [a] :dtype/int64)
-(defmethod dtype (Class/forName "[Ljava.lang.Object;") [a] :dtype/object)
+(defmethod dtype :default [_] :dtype/object)
+(defmethod dtype (Class/forName "[Z") [_] :dtype/bool)
+(defmethod dtype (Class/forName "[D") [_] :dtype/float64)
+(defmethod dtype (Class/forName "[J") [_] :dtype/int64)
+(defmethod dtype (Class/forName "[Ljava.lang.Object;") [_] :dtype/object)
 
 (defn array [dtype size] (make-buffer {:dtype dtype :size size}))
 (defn from-sequential [dtype coll] (make-buffer {:dtype dtype :seq coll}))
@@ -85,6 +85,23 @@
                       (recur (unchecked-inc i)))
                     dst))))
         typed-afn (type-hint-array-fn afn f src dst)]
+    (typed-afn)))
+
+(defn reverse-values
+  "A higher-performance equivalent to `(into dst (reverse src))`
+   for buffers `src` and `dst` of equal size"
+  [src dst]
+  (let [afn (fn [_ dst src]
+              (let [ls (size src)
+                    ld (size dst)]
+                (loop [i 0
+                       j (dec ld)]
+                  (if (and (< i ls) (>= j 0))
+                    (do
+                      (set* dst j (get* src i))
+                      (recur (unchecked-inc i) (unchecked-dec j)))
+                    dst))))
+        typed-afn (type-hint-array-fn afn identity src dst)]
     (typed-afn)))
 
 (defn dual-map-values

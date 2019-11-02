@@ -3,8 +3,8 @@
             [io.aviso.ansi :as ansi]
             [bamboo.array :as array]
             [bamboo.index :as index]
-            [bamboo.objtype :refer [array? array-like? dataframe? ndarray?
-                                    scalar? series? slice?]]
+            [bamboo.objtype :refer [array? array-like? dataframe? mask? 
+                                    ndarray? scalar? series? slice?]]
             [bamboo.series :as series]
             [bamboo.utility :refer [condas-> dots spaces to-vector]]
             [numcloj.core :as np]
@@ -155,13 +155,26 @@
 (defn iloc
   "Purely integer-location based indexing for selection by position"
   ([df index]
-   (cond
-     (scalar? index) (array/array (map #(iat df index %)
-                                       (range (second (:shape df)))))
-     (array-like? index) (let [_index (array/iter (array/array index))
-                               indices (keep-indexed #(when (true? %2) %1)
-                                                     _index)]
-                           (take* df indices))))
+   (let [index-type (cond
+                      (scalar? index) :index
+                      (mask? index) :mask
+                      (array-like? index) :indices
+                      (fn? index) :callable
+                      (slice? index) :slice)]
+     (case index-type
+       :index (series/series (map #(iat df index %) 
+                                  (range (second (:shape df))))
+                             :index (index/copy (:columns df))
+                             :copy false)
+       :indices (take* df index)
+       :slice (take* df (range (:start index)
+                               (+ (:end index) (:step index))
+                               (:step index)))
+       :mask (take* df (ndarray/tolist (np/flatnonzero index)))
+       (throw (ex-info (str "Must specify either a single integer, "
+                            "a list or array of integers, a slice of integers, "
+                            "a boolean array or callable function: " index-type)
+                       (:type :ValueError))))))
   ([df index column] (iat df index column)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.at.html
@@ -180,11 +193,10 @@
    (let [label-type-fn (fn [label index]
                          (cond
                            (scalar? label) :label
-                           (array/mask? label) :mask
-                           (ndarray? label) :labels
+                           (mask? label) :mask
+                           (array-like? label) :labels
                            (fn? label) :callable
-                           (slice? label) :slice
-                           (sequential? label) :labels))
+                           (slice? label) :slice))
          index-label-type (label-type-fn index-label (:index df))
          column-label-type (label-type-fn column-label (:columns df))]
      (when-not (or index-label-type column-label-type)
@@ -214,17 +226,26 @@
                :mask (ndarray/tolist (np/flatnonzero column-label))
                nil)
            nvals (when (some? n) (array/take* (index/array (:columns df)) n))
-           data (condas-> (:data df) $
-                          (some? n) (array/take* $ n)
-                          (some? m) (array/array
-                                     (map #(series/take* % m) (array/iter $))))
            index (if (some? mvals) (index/index mvals) (:index df))
            columns (if (some? nvals) (index/index nvals) (:columns df))]
-       (dataframe (apply array-map (interleave (index/to-list columns)
-                                               (array/iter data)))
-                  :index index
-                  :columns columns
-                  :copy false)))))
+       
+       (if (= :label index-label-type)
+         (let [data (condas-> (:data df) $
+                              (some? n) (array/take* $ n)
+                              (some? m) (array/array 
+                                         (map #(series/iloc % (first m))
+                                              (array/iter $))))]
+           (series/series (array/iter data) 
+                          :index columns))
+         (let [data (condas-> (:data df) $
+                              (some? n) (array/take* $ n)
+                              (some? m) (array/array (map #(series/take* % m)
+                                                          (array/iter $))))]
+           (dataframe (apply array-map (interleave (index/to-list columns)
+                                                   (array/iter data)))
+                      :index index
+                      :columns columns
+                      :copy false)))))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.itertuples.html
 (defn itertuples
@@ -309,35 +330,32 @@
   "Test whether two objects contain the same elements"
   [df other]
   (and (= (:shape df) (:shape other))
-       (reduce
-        #(and %1 (let [s (array/item (:data df) %2)
-                       other-s (array/item (:data other) %2)]
-                   (and (= (:shape s) (:shape other-s))
-                        (np/array-equal (series/to-numpy s) 
-                                        (series/to-numpy other-s)))))
-        true
-        (range (second (:shape df))))))
+       (every? #(let [s (array/item (:data df) %)
+                      other-s (array/item (:data other) %)]
+                  (series/equals s other-s))
+               (range (second (:shape df))))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.take.html
 (defn take*
   "Return the elements in the given positional indices along an axis"
   [df indices & {:keys [axis is-copy] :or {axis 0 is-copy true}}]
   (case axis
-    0 (dataframe (apply array-map (interleave
-                                   (index/to-list (:columns df))
-                                   (map #(series/take* % indices) 
-                                        (array/iter (:data df)))))
-                 :columns (cond-> (:columns df) is-copy (index/copy))
-                 :index (index/take* (:index df) indices)
-                 :copy false)
-    1 (let [columns (index/take* (:columns df) indices)]
-        (dataframe (apply array-map (interleave
-                                     (index/to-list columns)
-                                     (array/iter 
-                                      (array/take* (:data df) indices))))
-                   :columns columns
-                   :index (cond-> (:index df) is-copy (index/copy))
-                   :copy false))))
+    (0 :index) (dataframe (apply array-map 
+                                 (interleave (index/to-list (:columns df))
+                                             (map #(series/take* % indices)
+                                                  (array/iter (:data df)))))
+                          :columns (cond-> (:columns df) is-copy (index/copy))
+                          :index (index/take* (:index df) indices)
+                          :copy false)
+    (1 :columns) (let [columns (index/take* (:columns df) indices)]
+                   (dataframe (apply array-map 
+                                     (interleave (index/to-list columns)
+                                                 (array/iter
+                                                  (array/take* (:data df) 
+                                                               indices))))
+                              :columns columns
+                              :index (cond-> (:index df) is-copy (index/copy))
+                              :copy false))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.truncate.html
 (defn truncate
@@ -369,26 +387,22 @@
   [df by & {:keys [axis ascending inplace kind na-position]
             :or {axis 0 ascending true inplace false
                  sorting :quicksort na-position :last}}]
-  (if (= 0 axis)
-    (let [_by (to-vector by)
-          positions (map #(index/get-loc (:columns df) %) _by)
-          series (array/take* (:data df) positions)
-          indices (if (= 1 (count series))
-                    (array/argsort (first series))
-                    (array/array
-                     (np/argsort (np/rec.fromarrays
-                                  (map series/to-list (array/iter series))
-                                  :names _by))))
-          index (index/index
-                 (array/take* (index/array (:index df)) indices))
-          data (map #(series/take* % (array/to-numpy indices))
-                    (array/iter (:data df)))]
-      (dataframe (apply array-map
-                        (interleave (index/to-list (:columns df))
-                                    data))
-                 :columns (:columns df)
-                 :index index
-                 :copy false))))
+  (let [_by (to-vector by)
+        indices (case axis
+                  (1 :columns) (map #(index/get-loc (:index df) %) _by)
+                  (map #(index/get-loc (:columns df) %) _by))
+        as (case axis
+             (1 :columns) (array/array (map #(iloc df %) indices) 
+                                       :dtype :dtype/object)
+             (array/take* (:data df) indices))
+        sorted-indices
+        (if (= 1 (:size as))
+          (array/argsort (series/array (array/item as 0)) :ascending ascending)
+          (let [a (as-> (array/iter as) $
+                    (map series/to-list $)
+                    (np/argsort (np/rec.fromarrays $ :names _by)))]
+            (array/array (if ascending a (np/flip a)) :copy false)))]
+    (take* df sorted-indices :axis axis)))
 
 ;;; Combining / joining / merging
 ;;; Time series-related

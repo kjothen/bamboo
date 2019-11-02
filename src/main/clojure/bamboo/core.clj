@@ -19,6 +19,9 @@
 (def date-range date-range/date-range)
 
 ;;; Series
+;; Constructor
+(def series series/series)
+
 ;;; DataFrame
 ;; Constructor
 (def dataframe dataframe/dataframe)

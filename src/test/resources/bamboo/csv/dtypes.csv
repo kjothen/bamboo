@@ -1,0 +1,3 @@
+:dtype/bool,:dtype/int64,:dtype/float64,:dtype/object,:dtype/object|:dtype/bool
+True,42,42.0,"Life, The Universe and Everything",Yes
+False,3,3.0,Three is the magic number,No

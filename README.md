@@ -4,7 +4,7 @@ A minimal, "pandas-like" library for Clojure, implemented on numcloj, a "numpy-l
 ## Usage
 The main user namespaces are:
 * `bamboo.core` for creating top-level "pandas objects" (stored as Clojure maps) 
-such as dataframes, various types of indices, etc. 
+such as dataframes, series, various types of indices, arrays, etc. 
 * `bamboo.dataframe` for operating on a dataframe, eg `drop*` rows and columns, 
 `take*` rows and columns, etc.
 * `bamboo.series` for operating on a series, eg `drop*` rows, 
@@ -15,7 +15,7 @@ such as dataframes, various types of indices, etc.
 * `numcloj.ndarray` for additional operations on "ndarrays"
 
 >During development, it is highly recommended that you use the clojure.spec 
-"checked" version of the libraries, eg. `bamboo.checked.core`, toalidate 
+"checked" version of the libraries, eg. `bamboo.checked.core`, to validate 
 function arguments against the specification. In production, revert to using 
 the unchecked versions for improved performance.
 
@@ -33,7 +33,7 @@ _Equivalent SciPy libraries in Bamboo_
 ### bamboo
 The main namespace for top-level, pandas-like operations in the `bamboo` 
 library is `bamboo.core` or, alternatively, use `bamboo.checked.core` for 
-rigorous function argument checking. Dataframe operations are in the 
+function argument checking. Dataframe operations are in the 
 `bamboo.dataframe` library (with checked versions in `bamboo.checked.dataframe`).
 
 ```python

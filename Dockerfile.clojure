@@ -4,3 +4,4 @@ RUN apt-get update \
  && curl -O https://download.clojure.org/install/linux-install-1.10.1.478.sh \
  && chmod +x linux-install-1.10.1.478.sh \
  && ./linux-install-1.10.1.478.sh
+ENTRYPOINT ["/usr/local/bin/clojure"]

@@ -4,7 +4,6 @@
 .ipynb_checkpoints/
 .nrepl-port
 .rebel_readline_history
-*.csv
 *.clx
 *.jar
 target/

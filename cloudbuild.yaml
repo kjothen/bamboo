@@ -2,8 +2,6 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-f', 'Dockerfile.clojure', '-t', 'gcr.io/$PROJECT_ID/clojure', '.']
 - name: 'gcr.io/$PROJECT_ID/clojure'
-  args: ['clojure', '-A:test']
-- name: 'gcr.io/$PROJECT_ID/clojure'
-  args: ['clojure', '-A:jar', 'bamboo.jar']
+  args: ['-A:test']
 images: ['gcr.io/$PROJECT_ID/clojure']
 

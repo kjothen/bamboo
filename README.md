@@ -25,7 +25,7 @@ the unchecked versions for improved performance.
 | `pandas.DataFrame` | `bamboo.dataframe` | `applymap, at, drop*, equals, iat, iloc, itertuples, loc, sort-values, take*, to-string, transpose`  |
 | `pandas.Series` | `bamboo.series` | `at, copy, equals, iat, iloc, item, items, iter, iteritems, keys*, loc, take*, to-list, to-numpy, to-string`  |
 | `pandas.Index` | `bamboo.index` | `array, copy, drop*, dtypes, equals, get-loc, map*, slice-locs, T, take*, to-list, to-native-types,  to-numpy` |
-| `numpy` | `numcloj.core` | `amax, argmax, argmin, argsort, array, array-equal, asarray, copy, copyto, count-nonzero, delete, empty*, empty-like, equal, flatnonzero, frombuffer, full, full-like, greater, greater-equal, isnan, less, less-equal, logical-and, logical-not, logical-or, not-equal, ones, ones-like, put, recarray, rec.fromarrays, take*, vectorize, zeros, zeros-like` |
+| `numpy` | `numcloj.core` | `amax, arange, argmax, argmin, argsort, array, array-equal, asarray, copy, copyto, count-nonzero, delete, empty*, empty-like, equal, flatnonzero, frombuffer, full, full-like, greater, greater-equal, isnan, less, less-equal, logical-and, logical-not, logical-or, not-equal, ones, ones-like, put, recarray, rec.fromarrays, take*, vectorize, zeros, zeros-like` |
 | `numpy.ndarray` | `numcloj.ndarray` | `argsort, copy, fill, item, itemset, put, take*, tolist` |
 
 _Equivalent SciPy libraries in Bamboo_

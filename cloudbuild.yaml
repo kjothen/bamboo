@@ -1,0 +1,3 @@
+steps:
+- name: 'gcr.io/$PROJECT_ID/clj'
+  args: ['clj', '-A:jar', '$PROJECT_ID.jar']

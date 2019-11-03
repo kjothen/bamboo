@@ -1,3 +1,9 @@
 steps:
-- name: 'gcr.io/$PROJECT_ID/clj'
-  args: ['clj', '-A:jar', '$PROJECT_ID.jar']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-f', 'Dockerfile.clojure', '-t', 'gcr.io/$PROJECT_ID/clojure', '.']
+- name: 'gcr.io/$PROJECT_ID/clojure'
+  args: ['clojure', '-A:test']
+- name: 'gcr.io/$PROJECT_ID/clojure'
+  args: ['clojure', '-A:jar', 'bamboo.jar']
+images: ['gcr.io/$PROJECT_ID/clojure']
+

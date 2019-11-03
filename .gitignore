@@ -6,5 +6,6 @@
 .rebel_readline_history
 *.csv
 *.clx
+*.jar
 target/
 user.clj

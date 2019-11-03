@@ -1,7 +1,9 @@
 (ns bamboo.array
-  (:require [numcloj.core :as np]
+  (:require [clojure.string :as string]
+            [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]
-            [bamboo.objtype :refer [array? mask? ndarray?]]))
+            [bamboo.objtype :refer [array? mask? ndarray?]]
+            [bamboo.utility :refer [dots front-back-split]]))
 
 ;;;; An extension array for ndarrays
 
@@ -23,7 +25,7 @@
 (defn- from-numpy [a]
   {:objtype :objtype/extension-array
    :dtype (:dtype a)
-   :data a
+   :ndarray a
    :size (:size a)
    :shape [(:size a) nil]})
 
@@ -38,7 +40,7 @@
     :else (from-numpy (np/array values))))
 
 ;;; Attributes
-(defn values [a] (:data a))
+(defn values [a] (:ndarray a))
 
 ;;; Methods
 
@@ -71,3 +73,52 @@
   "Convert the PandasArray to a numpy.ndarray"
   [a & {:keys [dtype copy] :or {copy false}}]
   (values (if copy (copy a) a)))
+
+;;; Clojure Extensions
+
+(defn- array->string
+  [a & {:keys [min-rows max-rows max-width] 
+        :or {min-rows 10 max-rows 100 max-width 72}}]  
+  (let [row-splits (when (some? max-rows)
+                     (front-back-split (:size a) max-rows :minimum min-rows))
+        str-fn #(if (string? %) (str "'" % "'") ((fnil str "nil") %))
+        strs ((np/vectorize str-fn :otypes [:dtype/object]) (to-numpy a))
+        str-width (when-not (= :dtype/object (:dtype a))
+                    (long (np/amax ((np/vectorize count) strs))))
+        align (if (= :dtype/object (:dtype a)) "-" "")
+        fmt-str-fn (fn [s align width] (format (str "%" align width "s") s))
+        row-fn (fn [row-start row-end indices]
+                 (let [len (count indices)]
+                   (loop [i 0
+                          line-width (count row-start)
+                          line row-start
+                          lines []]
+                     (if (< i len)
+                       (let [idx (nth indices i)
+                             sidx (ndarray/item strs idx)
+                             last? (= i (dec len))
+                             s (cond-> sidx
+                                 (some? str-width) (fmt-str-fn align str-width)
+                                 (not last?) (str ", ")
+                                 last? (str row-end))
+                             width (count s)
+                             next-width (+ line-width width)
+                             newline? (> next-width max-width)]
+                         (recur (unchecked-inc i)
+                                (if newline? 1 next-width)
+                                (if newline? " " (str line s))
+                                (if newline? (conj lines (str line s)) lines)))
+                       (if (< 1 line-width) (conj lines line) lines)))))
+        body (if-some [split (:split row-splits)]
+               (concat
+                (row-fn "[" "," (take split (:indices row-splits)))
+                [(str " " (fmt-str-fn (dots 3) "-" 1))]
+                (row-fn " " "]" (drop split (:indices row-splits))))
+               (row-fn "[" "]" (range (:size a))))
+        metadata (format "Length: %d, dtype: %s" (:size a) (name (:dtype a)))]
+    (cond-> (string/join \newline (cons "<PandasArray>" body))
+      (some? metadata) (str \newline metadata))))
+
+(defn show [a & args]
+  (let [opts (apply array-map args)]
+    (println (apply (partial array->string a) (mapcat seq opts)))))

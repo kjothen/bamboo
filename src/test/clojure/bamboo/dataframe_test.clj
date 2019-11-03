@@ -1,9 +1,8 @@
 (ns bamboo.dataframe-test
-  (:require [clojure.pprint :as pprint]
-            [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is]]
             [io.aviso.ansi :as ansi]
             [bamboo.dataframe :refer [dataframe drop* equals
-                                      loc sort-values to-string]]
+                                      loc show sort-values]]
             [bamboo.index :as index]
             [bamboo.series :as series]
             [numcloj.core :as np]
@@ -15,20 +14,22 @@
          [0 -1 42 99 23]
          [23 99 42 -1 0]
          ["abc" "xyz" "def" "jkl" "ghi"]])
-(def tuples (apply map vector as))
+(def tuples (apply mapv vector as))
 
 (def int64-index [6 7 8 9 10])
 (def double64-index [6.1 6.2 6.3 6.4 6.5])
 (def bool-index [true false true false true])
 (def obj-index ["m" "n" "o" "p" "q"])
 
-(defn print-df [df] (println (to-string df)) (println))
-(defn print-series [s] (println (series/to-string s)) (println))
+(defn print-df [df] (show df) (println))
+(defn print-series [s] (series/show s) (println))
 
 (deftest dataframe-test
   (let [columns obj-index
         index int64-index
         df (dataframe tuples :columns columns :index index)]   
+    (println (ansi/green (format "(dataframe %s :columns %s :index %s)" 
+                                 tuples columns index)))
     (print-df df)
     
     ;; expected shape, columns and index 
@@ -41,7 +42,8 @@
   (let [columns obj-index
         index int64-index
         df (dataframe tuples :columns columns :index index)]
-    (println (ansi/bold-green "df"))
+    (println (ansi/green (format "(def df (dataframe %s :columns %s :index %s))"
+                                 tuples columns index)))
     (print-df df)
 
     ;; take single index
@@ -83,7 +85,8 @@
   (let [columns obj-index
         index int64-index
         df (dataframe tuples :columns columns :index index)]
-    (println (ansi/bold-green "df"))
+    (println (ansi/green (format "(def df (dataframe %s :columns %s :index %s))"
+                                 tuples columns index)))
     (print-df df)
 
     ;; drop first column
@@ -194,7 +197,8 @@
         index int64-index
         df (dataframe tuples :columns columns :index index)]
     ;; sort by one column
-    (println (ansi/bold-green "df"))
+    (println (ansi/green (format "(def df (dataframe %s :columns %s :index %s))"
+                                 tuples columns index)))
     (print-df df)
     (let [expected [[6 8 10 7 9]
                     [7 8 10 6 9]

@@ -52,25 +52,17 @@
 ;;; Extensions
 (def array array/array)
 
-;; Bamboo Printing
+;;; Clojure Extensions
 (def ^:dynamic *show-length* 100)
 (def ^:dynamic *show-width* 80)
 
-(defmulti show-numcloj :dtype)
-(defmethod show-numcloj :default [a & args] 
-  (binding [*print-level* 1
-            *print-length* *show-length*]
-    (clojure.pprint/pprint a)))
+(declare show-numcloj)
 
-(defmulti show (fn [coll & args] (:objtype coll)))
-(defmethod show :default [m & args] 
+(defmulti show (fn [coll & _] (:objtype coll)))
+(defmethod show :default [m & _] 
   (binding [*print-level* 1 
             *print-length* *show-length*] 
     (clojure.pprint/pprint m)))
-
-; (defmethod show :objtype/extension-array [a & args]
-;   (apply (partial array/show df)
-;          (list* :max-rows *show-length* args)))
 
 (defmethod show :objtype/dataframe [df & args] 
   (apply (partial dataframe/show df) 
@@ -84,7 +76,7 @@
   (apply (partial index/show idx) 
          (list* :max-rows *show-length* :max-width *show-width* args)))
 
-(defmethod show :objtype/rangeindex [idx & args]
+(defmethod show :objtype/rangeindex [idx & _]
   (index/show idx))
 
 (defmethod show :objtype/index [idx & args]
@@ -92,7 +84,8 @@
          (list* :max-rows *show-length* :max-width *show-width* args)))
 
 (defmethod show :objtype/extension-array [a & args]
-  (show-numcloj (:data a)))
+  (apply (partial array/show a)
+         (list* :max-rows *show-length* :max-width *show-width* args)))
 
 ;; Bamboo Array Comparison
 (defmulti to-numpy :objtype)

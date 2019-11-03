@@ -18,14 +18,21 @@
 (defn spaces [n] (apply str (repeat n \ )))
 (defn dots [n] (apply str (repeat n \.)))
 
-(defn front-back-split [len max-len]
-  (if (<= len max-len)
+(defn front-back-split [len maximum & {:keys [minimum]}]
+  (if (<= len maximum)
     {:indices (range len) :split nil}
-    (if (= 1 max-len)
+    (if (= 1 maximum)
       {:indices (range 1) :split 1}
-      (let [front (range (long (/ max-len 2)))
-            back (range (- len (long (/ max-len 2))) len)]
-        {:indices (concat front back) :split (count front)}))))
+      (if (some? minimum)
+        (let [_maximum (long (/ maximum 2))
+              _minimum (min minimum _maximum)
+              front (range _minimum)
+              back (range (- len _minimum) len)]
+          {:indices (concat front back) :split _minimum})
+        (let [_maximum (long (/ maximum 2))
+              front (range _maximum)
+              back (range (- len _maximum) len)]
+          {:indices (concat front back) :split _maximum})))))
 
 (defn parse-long [s]
   (tufte/p

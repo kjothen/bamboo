@@ -219,3 +219,34 @@
                     dst))))
         typed-afn (type-hint-array-fn afn identity index src dst)]
     (typed-afn)))
+
+(defn arange
+  "A higher-performance equivalent to `(vec (range start stop step))`
+   but truncates results to the number of decimal places in `(+ start step)`"
+  [start stop step dtype]
+  (case dtype
+    :dtype/int64 (let [len (long (/ (- stop start) step))
+                       dst (array dtype len)]
+                   (loop [i 0]
+                     (if (< i len)
+                       (do
+                         (aset-long dst i (+ start (* step i)))
+                         (recur (unchecked-inc i)))
+                       dst)))
+    :dtype/float64 (let [len (Math/ceil (/ (- stop start) step))
+                         dps (loop [n 1] 
+                               (let [r (Math/IEEEremainder 
+                                        (* (+ start step) (Math/pow 10 n))
+                                        1.0)]
+                                 (if-not (or (zero? r) (>= n 16))
+                                   (recur (unchecked-inc n))
+                                   n)))
+                         scale (Math/pow 10 dps)
+                         dst (array dtype len)]
+                     (loop [i 0]
+                       (if (< i len)
+                         (let [val (+ start (* step i))]
+                           (aset-double dst i
+                                        (/ (Math/round (* val scale)) scale))
+                           (recur (unchecked-inc i)))
+                         dst)))))

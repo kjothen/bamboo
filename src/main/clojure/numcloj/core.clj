@@ -34,6 +34,9 @@
 (def recarray array-creation/recarray)
 (def rec.fromarrays rec/fromarrays)
 
+;; Numerical ranges
+(def arange array-creation/arange)
+
 ;;; Array manipulation routines
 ;; Basic operations
 (def copyto array-manipulation/copyto)

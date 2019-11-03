@@ -3,7 +3,7 @@
             [io.aviso.ansi :as ansi]
             [bamboo.array :as array]
             [bamboo.index :as index]
-            [bamboo.objtype :refer [mask? ndarray? scalar? series? slice?]]
+            [bamboo.objtype :refer [array-like? mask? scalar? series? slice?]]
             [bamboo.utility :refer [dots front-back-split spaces]]
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]))
@@ -79,14 +79,12 @@
    inputs are a single label, a list/array of labels, a slice obj of labels,
    a boolean array or a callable function"
   [series label]
-  (let [label-type-fn (fn [label]
-                        (cond
-                          (scalar? label) :label
-                          (mask? label) :mask
-                          (ndarray? label) :labels
-                          (fn? label) :callable
-                          (slice? label) :slice
-                          (sequential? label) :labels))
+  (let [label-type-fn (fn [label] (cond
+                                    (scalar? label) :label
+                                    (mask? label) :mask
+                                    (array-like? label) :labels
+                                    (fn? label) :callable
+                                    (slice? label) :slice))
         i (case (label-type-fn label)
             :label (vector (index/get-loc (:index series) label))
             :labels (let [labels (array/array label)]
@@ -111,14 +109,12 @@
    inputs are an integer, a list/array of integers, a slice obj of integers,
    a boolean array or a callable function"
   [series i]
-  (let [integer-type-fn (fn [i]
-                          (cond
-                            (int? i) :index
-                            (mask? i) :mask
-                            (ndarray? i) :indices
-                            (fn? i) :callable
-                            (slice? i) :slice
-                            (sequential? i) :indices))]
+  (let [integer-type-fn (fn [i] (cond
+                                  (int? i) :index
+                                  (mask? i) :mask
+                                  (array-like? i) :indices
+                                  (fn? i) :callable
+                                  (slice? i) :slice))]
     (case (integer-type-fn i)
       :index (iat series i)
       :indices (array/take* (:array series) i)
@@ -186,37 +182,35 @@
   [series & {:keys [buf na-rep float-format header index 
                     length dtype name* max-rows min-rows]
          :or {header true index true na-rep "NaN" length false}}]
-  (let [row-splits (front-back-split (:size series)
-                                     (if (some? max-rows)
-                                       max-rows
-                                       (:size series)))
+  (let [row-splits (when (some? max-rows) 
+                     (front-back-split (:size series) max-rows))
         col-strs ((np/vectorize str) (to-numpy series))
-        col-widths ((np/vectorize count) col-strs)
-        max-col-width (long (np/amax col-widths))
+        col-width (long (np/amax ((np/vectorize count) col-strs)))
         idx-strs (index/to-native-types (:index series))
-        idx-widths ((np/vectorize count) idx-strs)
-        max-idx-width (long (np/amax idx-widths))
+        idx-width (long (np/amax ((np/vectorize count) idx-strs)))
+        spacer "  "
+        fmt-str-fn (fn [align width s] (format (str "%" align width "s") s))        
         row-fn (fn [indices]
                  (map (fn [idx]
-                        (let [idx-str (format (str "%" "-" max-idx-width "s")
-                                              (ndarray/item idx-strs idx))
-                              col-str (format (str "%"  max-col-width "s")
-                                              (ndarray/item col-strs idx))]
-                          (string/join "  " [(ansi/bold idx-str) 
-                                             col-str])))
-                      indices))
+                        (let [idx-str (ndarray/item idx-strs idx)
+                              col-str (ndarray/item col-strs idx)]
+                          (string/join spacer
+                                       [(fmt-str-fn "-" idx-width idx-str)
+                                        (fmt-str-fn "" col-width col-str)])))
+                        indices))
         body (if-some [split (:split row-splits)]
-               (concat (row-fn (take split (:indices row-splits)))
-                       [(string/join "  " 
-                                    [(spaces max-idx-width)
-                                     (format (str "%-" max-col-width "s") 
-                                             (dots 3))])]
-                       (row-fn (drop split (:indices row-splits))))
-               (row-fn (:indices row-splits)))
-        dimensions (when length
+               (concat
+                (row-fn (take split (:indices row-splits)))
+                (let [elipsis (fmt-str-fn "-" col-width (dots 3))]
+                  (vector (string/join spacer [(spaces idx-width) elipsis]))
+                (row-fn (drop split (:indices row-splits)))))
+               (row-fn (range (:size series))))
+        metadata (when length
                      (format "Length: %d" (:size series)))]
     (cond-> (string/join \newline body)
-      (some? dimensions) (str \newline \newline dimensions))))
+      (some? metadata) (str \newline \newline metadata))))
+
+;;; Clojure Extensions
 
 (defn show [series & args]
   (let [opts (apply array-map args)]

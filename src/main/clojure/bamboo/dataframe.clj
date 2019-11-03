@@ -315,7 +315,7 @@
           series (condas-> (array/to-numpy (if (true? inplace)
                                              (:data df)
                                              (copy-data df))) $
-                           (seq n) (np/delete (array/to-numpy $) n)
+                           (seq n) (np/delete $ n)
                            (seq m) ((np/vectorize
                                      #(np/delete (series/to-numpy %) m)) $))]
 
@@ -517,6 +517,8 @@
                                                  (second (:shape df))))]
     (cond-> (str headers \newline (string/join \newline body))
       (some? dimensions) (str \newline \newline dimensions))))
+
+;;; Clojure Extensions
 
 (defn show [df & args]
   (let [opts (apply array-map args)]

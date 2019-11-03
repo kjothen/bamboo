@@ -1,14 +1,17 @@
 (ns bamboo.index-test
   (:require [clojure.test :refer [deftest is]]
-            [bamboo.array :as array]
+            [io.aviso.ansi :as ansi]
             [bamboo.core :as pd]
-            [bamboo.index :refer [index rangeindex to-native-types to-numpy]]
+            [bamboo.index :refer [index rangeindex show
+                                  to-native-types to-numpy]]
             [numcloj.core :as np]))
 
 (def int64-index [6 7 8 9 10])
 (def double64-index [6.1 6.2 6.3 6.4 6.5])
 (def bool-index [true false true false true])
 (def obj-index ["m" "n" "o" "p" "q"])
+
+(defn print-index [idx] (show idx) (println))
 
 (deftest index-test
   (is (np/array-equal int64-index (to-numpy (index int64-index))))
@@ -22,26 +25,42 @@
   (is (np/array-equal (range 10 20 5) 
                       (to-numpy (rangeindex 10 :stop 20 :step 5)))))
 
-(defn- datetimeindex->array [idx] (array/to-numpy (to-native-types idx)))
+(defn- datetimeindex->array [idx] (to-native-types idx))
 
 (defn- datetimeindex-spf-test
   [expected start periods freq]
   (let [actual (pd/date-range :start start :periods periods :freq freq)]
+    (println (ansi/green (format (str "(date-range :start \"%s\" "
+                                      ":periods %d :freq \"%s\")")
+                                 start periods freq)))
+    (print-index actual)
     (is (np/array-equal expected (datetimeindex->array actual)))))
 
 (defn- datetimeindex-epf-test
   [expected end periods freq]
   (let [actual (pd/date-range :end end :periods periods :freq freq)]
+    (println (ansi/green (format (str "(date-range :end \"%s\" "
+                                      ":periods %d :freq \"%s\")")
+                                 end periods freq)))
+    (print-index actual)
     (is (np/array-equal expected (datetimeindex->array actual)))))
 
 (defn- datetimeindex-sep-test
   [expected start end periods]
   (let [actual (pd/date-range :start start :end end :periods periods)]
+    (println (ansi/green (format (str "(date-range :start \"%s\" "
+                                      ":end \"%s \" :periods %d)")
+                                 start end periods)))
+    (print-index actual)
     (is (np/array-equal expected (datetimeindex->array actual)))))
 
 (defn- datetimeindex-sef-test
   [expected start end freq]
   (let [actual (pd/date-range :start start :end end :freq freq)]
+    (println (ansi/green (format (str "(date-range :start \"%s\" "
+                                      ":end \"%s \" :freq \"%s\")")
+                                 start end freq)))
+    (print-index actual)
     (is (np/array-equal expected (datetimeindex->array actual)))))
 
 ;; start (s), end (e), periods (p) freq (f),

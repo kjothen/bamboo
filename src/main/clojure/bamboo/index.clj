@@ -270,7 +270,8 @@
               :tz tz}
              (select-keys a [:shape :size])))))
 
-;;; Extensions
+;;; Clojure Extensions
+
 (defn- index->string
   [idx objtype-str objfields-str max-rows max-width]
   (let [start-obj (str objtype-str "([")
@@ -323,7 +324,7 @@
     (println (index->string idx
                             "Index"
                             (format "dtype='%s')"
-                                    (name (get-in idx [:data :data :dtype])))
+                                    (name (get-in idx [:data :dtype])))
                             max-rows
                             max-width))))
 
@@ -337,8 +338,7 @@
     (println (index->string idx 
                             "DatetimeIndex"
                             (format "dtype='%s', freq='%s')"
-                                    (name (get-in idx [:data :data :dtype]))
+                                    (name (get-in idx [:data :dtype]))
                                     (:freq idx))
                             max-rows 
                             max-width))))
-

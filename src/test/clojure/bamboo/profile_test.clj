@@ -12,4 +12,4 @@
    (tufte/profile
     {}
     (dotimes [_ n]
-      (pd/read-csv "data.csv" :nrows nrows)))))
+      (pd/read-csv "kepler.csv.gz" :nrows nrows)))))

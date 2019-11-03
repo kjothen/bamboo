@@ -179,5 +179,20 @@
 
 ;;; Creating character arrays (numpy.rec)
 ;;; Numerical ranges
+
+;; https://docs.scipy.org/doc/numpy/reference/generated/numpy.arange.html
+(defn arange
+  "Return evenly spaced values within a given interval"
+  ([stop] (arange 0 stop 1))
+  ([start stop] (arange start stop 1))
+  ([start stop step]
+   (let [float64? (or (double? start) (double? stop) (double? step))
+         _start (if float64? (double start) (long start))
+         _stop (if float64? (double stop) (long stop))
+         _step (if float64? (double step) (long step))
+         dtype (if float64? :dtype/float64 :dtype/int64)]
+     (frombuffer (b/arange _start _stop _step dtype)
+                 :dtype dtype))))
+
 ;;; Building matrices
 ;;; The Matrix class

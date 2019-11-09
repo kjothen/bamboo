@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [io.aviso.ansi :as ansi]
             [bamboo.dataframe :refer [dataframe drop* equals
-                                      loc show sort-values]]
+                                      iat iat! loc show sort-values]]
             [bamboo.index :as index]
             [bamboo.series :as series]
             [numcloj.core :as np]

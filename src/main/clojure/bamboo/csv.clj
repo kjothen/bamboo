@@ -8,7 +8,7 @@
             [bamboo.utility :refer [condas-> in? nan? parse-long to-vector]]))
 
 (defn parse-na
-  "Returns true is `s` is in `na-values`,
+  "Returns true if `s` is in `na-values`,
    otheriwse returns false"
   [s na-values]
   (in? s na-values))
@@ -20,7 +20,7 @@
   [s true-values false-values]
   (if (in? s true-values)
     true
-    (if (in? s false-values)
+    (when (in? s false-values)
       false)))
 
 (defn parse-double

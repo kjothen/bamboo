@@ -4,7 +4,7 @@ A minimal, "pandas-like" library for Clojure, implemented on numcloj, a "numpy-l
 ## Usage
 The main user namespaces are:
 * `bamboo.core` for creating top-level "pandas objects" (stored as Clojure maps) 
-such as dataframes, series, various types of indices, arrays, etc. 
+such as dataframes, series, various types of indices, arrays, (etc. 
 * `bamboo.dataframe` for operating on a dataframe, eg `drop*` rows and columns, 
 `take*` rows and columns, etc.
 * `bamboo.series` for operating on a series, eg `drop*` rows, 
@@ -23,7 +23,7 @@ the unchecked versions for improved performance.
 | - | - | - |
 | `pandas` | `bamboo.core` | `array, dataframe, date-range, index, rangeindex, read-csv, series` |
 | `pandas.DataFrame` | `bamboo.dataframe` | `applymap, at, drop*, equals, iat, iloc, itertuples, loc, sort-values, take*, to-string, transpose`  |
-| `pandas.Series` | `bamboo.series` | `at, copy, equals, iat, iloc, item, items, iter, iteritems, keys*, loc, take*, to-list, to-numpy, to-string`  |
+| `pandas.Series` | `bamboo.series` | `at, copy, equals, iat, iat!, iloc, item, items, iter, iteritems, keys*, loc, take*, to-list, to-numpy, to-string`  |
 | `pandas.Index` | `bamboo.index` | `array, copy, drop*, dtypes, equals, get-loc, map*, slice-locs, T, take*, to-list, to-native-types,  to-numpy` |
 | `numpy` | `numcloj.core` | `amax, arange, argmax, argmin, argsort, array, array-equal, asarray, copy, copyto, count-nonzero, delete, empty*, empty-like, equal, flatnonzero, frombuffer, full, full-like, greater, greater-equal, isnan, less, less-equal, logical-and, logical-not, logical-or, not-equal, ones, ones-like, put, recarray, rec.fromarrays, take*, vectorize, zeros, zeros-like` |
 | `numpy.ndarray` | `numcloj.ndarray` | `argsort, copy, fill, item, itemset, put, take*, tolist` |

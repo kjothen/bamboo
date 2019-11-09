@@ -56,8 +56,6 @@
 (def ^:dynamic *show-length* 100)
 (def ^:dynamic *show-width* 80)
 
-(declare show-numcloj)
-
 (defmulti show (fn [coll & _] (:objtype coll)))
 (defmethod show :default [m & _] 
   (binding [*print-level* 1 

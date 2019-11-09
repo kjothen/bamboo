@@ -133,3 +133,11 @@
 
 ;;; Test Support (numpy.testing)
 ;;; Window functions
+
+;;; Clojure extensions
+(def ^:dynamic *show-length* 1000)
+(def ^:dynamic *show-width* 80)
+
+(defn show [a & args]
+  (apply (partial ndarray/show a)
+         (list* :max-rows *show-length* args)))

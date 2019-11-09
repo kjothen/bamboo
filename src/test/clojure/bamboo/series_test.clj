@@ -16,7 +16,6 @@
     (print-series @s)
     (is (= -42.0 (iat @s 1)))
     (iat! s 1 "xyz")
-    (println (ansi/green (format "(iat! s 1 \"xyz\")"
-                                 tuple index)))
+    (println (ansi/green (format "(iat! s 1 \"xyz\")" tuple index)))
     (print-series @s)
     (is (= "xyz" (iat @s 1)))))

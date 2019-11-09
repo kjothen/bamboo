@@ -4,16 +4,20 @@
             [bamboo.array :as array]
             [bamboo.index :as index]
             [bamboo.objtype :refer [array-like? mask? scalar? series? slice?]]
-            [bamboo.utility :refer [dots front-back-split spaces]]
+            [bamboo.utility :refer [spaces]]
             [numcloj.core :as np]
-            [numcloj.ndarray :as ndarray]))
+            [numcloj.ndarray :as ndarray]
+            [utility.core :refer [atom? front-back-split]]))
 
 ;;;; https://pandas.pydata.org/pandas-docs/stable/reference/series.html
 
 ;; Forward Declarations
 (declare copy)
 (declare iat)
+(declare iat!)
 (declare iloc)
+(declare take*)
+(declare to-numpy)
 
 ;;; Constructor
 
@@ -36,6 +40,7 @@
 
 ;;; Attributes 
 (defn array [series] (:array series))
+(defn values [series] (to-numpy series))
 
 ;;; Conversion
 
@@ -67,11 +72,29 @@
   [series label]
   (iat series (index/get-loc (:index series) label)))
 
+(defn at!
+  "Set a single value for a row/column label pair,
+   where `series` must be an atom"
+  [series label]
+  (iat! series (index/get-loc (:index @series) label)))
+
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.iat.html 
 (defn iat
   "Access a single value for a row/column pair by integer position"
   [series i]
   (array/item (:array series) i))
+
+(defn iat!
+  "Set a single value for a row/column pair by integer position,
+   where `series` must be an atom"
+  [series i v]
+  {:pre [(atom? series)]}
+  (let [a (array/to-numpy (:array @series))]
+    ;; TODO - check it can be cast first!
+    (ndarray/itemset a i v)
+    (swap! series
+           assoc :array (array/array a :copy false))
+    nil))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.loc.html
 (defn loc
@@ -85,7 +108,8 @@
                                     (array-like? label) :labels
                                     (fn? label) :callable
                                     (slice? label) :slice))
-        i (case (label-type-fn label)
+        label-type (label-type-fn label)
+        i (case label-type
             :label (vector (index/get-loc (:index series) label))
             :labels (let [labels (array/array label)]
                       (map (partial index/get-loc (:index series))
@@ -101,7 +125,9 @@
                                  "a list of labels, an object slice, a boolean "
                                  "array or a callable function: " label)
                             {:type :ValueError})))]
-    (iloc series i)))
+    (if (= :label label-type)
+      (iloc series i)
+      (take* series i))))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.iloc.html
 (defn iloc
@@ -175,7 +201,9 @@
   "Return the elements in the given positional indices along an axis"
   [series indices & {:keys [axis is-copy]
                      :or {axis 0 is-copy true}}]
-  (array/take* (:array series) indices))
+  (bamboo.series/series
+   (array/take* (:array series) indices)
+   :index (index/take* (:index series) indices)))
 
 ;; https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.to_string.html
 (defn to-string
@@ -184,7 +212,7 @@
          :or {header true index true na-rep "NaN" length false}}]
   (let [row-splits (when (some? max-rows) 
                      (front-back-split (:size series) max-rows))
-        col-strs ((np/vectorize str) (to-numpy series))
+        col-strs ((np/vectorize str :otypes [:dtype/object]) (to-numpy series))
         col-width (long (np/amax ((np/vectorize count) col-strs)))
         idx-strs (index/to-native-types (:index series))
         idx-width (long (np/amax ((np/vectorize count) idx-strs)))
@@ -195,23 +223,27 @@
                         (let [idx-str (ndarray/item idx-strs idx)
                               col-str (ndarray/item col-strs idx)]
                           (string/join spacer
-                                       [(fmt-str-fn "-" idx-width idx-str)
+                                       [(ansi/bold 
+                                         (fmt-str-fn "-" idx-width idx-str))
                                         (fmt-str-fn "" col-width col-str)])))
                         indices))
         body (if-some [split (:split row-splits)]
                (concat
                 (row-fn (take split (:indices row-splits)))
-                (let [elipsis (fmt-str-fn "-" col-width (dots 3))]
+                (let [elipsis (fmt-str-fn "-" col-width "...")]
                   (vector (string/join spacer [(spaces idx-width) elipsis]))
                 (row-fn (drop split (:indices row-splits)))))
                (row-fn (range (:size series))))
         metadata (when length
                      (format "Length: %d" (:size series)))]
     (cond-> (string/join \newline body)
-      (some? metadata) (str \newline \newline metadata))))
+      (some? metadata) (str \newline metadata))))
 
 ;;; Clojure Extensions
 
 (defn show [series & args]
-  (let [opts (apply array-map args)]
-    (println (apply (partial to-string series) (mapcat seq opts)))))
+  (let [opts (apply array-map args)
+        s (apply (partial to-string series) (mapcat seq opts))]
+    (println (str s
+                  (if (:length opts) ", " \newline)
+                  (format "dtype: %s" (name (:dtype series)))))))

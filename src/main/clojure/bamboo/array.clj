@@ -3,7 +3,7 @@
             [numcloj.core :as np]
             [numcloj.ndarray :as ndarray]
             [bamboo.objtype :refer [array? mask? ndarray?]]
-            [bamboo.utility :refer [dots front-back-split]]))
+            [utility.core :refer [front-back-split]]))
 
 ;;;; An extension array for ndarrays
 
@@ -13,6 +13,7 @@
 ;;; Forward Declarations
 
 (declare copy)
+(declare from-numpy)
 (declare to-numpy)
 
 ;;; Interface
@@ -25,7 +26,7 @@
 (defn- from-numpy [a]
   {:objtype :objtype/extension-array
    :dtype (:dtype a)
-   :ndarray a
+   :values a
    :size (:size a)
    :shape [(:size a) nil]})
 
@@ -38,9 +39,6 @@
     (ndarray? values) (let [a (if copy (np/copy values) values)]
                         (from-numpy a))
     :else (from-numpy (np/array values))))
-
-;;; Attributes
-(defn values [a] (:ndarray a))
 
 ;;; Methods
 
@@ -72,7 +70,7 @@
 (defn to-numpy
   "Convert the PandasArray to a numpy.ndarray"
   [a & {:keys [dtype copy] :or {copy false}}]
-  (values (if copy (copy a) a)))
+  (:values (if copy (copy a) a)))
 
 ;;; Clojure Extensions
 
@@ -112,7 +110,7 @@
         body (if-some [split (:split row-splits)]
                (concat
                 (row-fn "[" "," (take split (:indices row-splits)))
-                [(str " " (fmt-str-fn (dots 3) "-" 1))]
+                [(str " " (fmt-str-fn "..." "-" 1))]
                 (row-fn " " "]" (drop split (:indices row-splits))))
                (row-fn "[" "]" (range (:size a))))
         metadata (format "Length: %d, dtype: %s" (:size a) (name (:dtype a)))]

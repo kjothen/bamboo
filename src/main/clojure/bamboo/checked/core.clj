@@ -3,6 +3,7 @@
             [clojure.spec.test.alpha :as stest]
             [bamboo.checked.base :as base]
             [bamboo.checked.dataframe :as dataframe]
+            [bamboo.checked.series :as series]
             [bamboo.core]))
 
 ;;;; https://pandas.pydata.org/pandas-docs/version/0.23/api.html
@@ -76,6 +77,8 @@
 (def date-range bamboo.core/date-range)
 
 ;;; Series
+(def series series/series)
+
 ;;; DataFrame
 ;; Constructor
 (def dataframe dataframe/dataframe)

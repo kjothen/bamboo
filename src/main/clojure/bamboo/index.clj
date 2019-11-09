@@ -69,11 +69,9 @@
   "Format specified values of self and return them"
   :objtype)
 
-(defmethod to-native-types :default 
-  [idx] 
-  ; ((np/vectorize str :otypes [:dtype/object]) 
-  ;  (to-numpy idx))
-  (to-numpy idx))
+(defmethod to-native-types :default
+  [idx]
+  ((np/vectorize str :otypes [:dtype/object]) (to-numpy idx)))
 
 (defmethod to-native-types :objtype/datetimeindex
   [idx]

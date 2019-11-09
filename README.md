@@ -1,5 +1,7 @@
 # Bamboo
-A minimal, "pandas-like" library for Clojure, implemented on numcloj, a "numpy-like" library for Clojure. 
+A minmal data processing library for Clojure, with some of the capabilities of [pandas](https://github.com/pandas-dev/pandas) and [numpy](https://github.com/numpy/numpy).
+
+**This software implements third party open source software APIs, pandas and numpy, the licenses for which are included in the source software here: [pandas](./src/licenses/pandas/LICENSE.txt) and [numpy](./src/licenses/numpy/LICENSE.txt).**
 
 ## Usage
 The main user namespaces are:

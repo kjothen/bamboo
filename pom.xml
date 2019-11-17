@@ -3,13 +3,13 @@
   <scm>
     <connection>scm:git:git://github.com/kjothen/bamboo.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/kjothen/bamboo.git</developerConnection>
-    <tag>1bc0cfbaf17d32ba5cea62d5f1bd076e4b7b784e</tag>
+    <tag>6bfa5e50c89ab216d33f151ecb288b1cd06b0039</tag>
     <url>https://github.com/kjothen/bamboo</url>
   </scm>
   <modelVersion>4.0.0</modelVersion>
   <groupId>kjothen</groupId>
   <artifactId>bamboo</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.2-alpha2</version>
   <name>bamboo</name>
   <dependencies>
     <dependency>

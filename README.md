@@ -1,3 +1,5 @@
+[![Clojars Project](https://img.shields.io/clojars/v/kjothen/bamboo.svg)](https://clojars.org/kjothen/bamboo)
+
 # Bamboo
 A minimal data processing library for Clojure, with some of the capabilities of [pandas](https://github.com/pandas-dev/pandas) and [numpy](https://github.com/numpy/numpy).
 

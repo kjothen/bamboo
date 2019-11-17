@@ -8,3 +8,4 @@
 *.jar
 target/
 user.clj
+exclude/

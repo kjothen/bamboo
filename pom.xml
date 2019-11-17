@@ -6,6 +6,7 @@
     <tag>6bfa5e50c89ab216d33f151ecb288b1cd06b0039</tag>
     <url>https://github.com/kjothen/bamboo</url>
   </scm>
+
   <modelVersion>4.0.0</modelVersion>
   <groupId>kjothen</groupId>
   <artifactId>bamboo</artifactId>
